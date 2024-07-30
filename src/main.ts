@@ -1,7 +1,8 @@
 import "./style.css";
 import * as THREE from "three";
 import Stats from "three/addons/libs/stats.module.js";
-// import {FPXLoader} from ""
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 // Initialization
 const stats = new Stats();
@@ -19,7 +20,8 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-camera.position.set(-5, 10, 0); // Camera Default Position
+camera.position.set(-5, 15, 0); // Camera Default Position
+// camera.position.set(2, 10, 2); // Camera Default Position
 // #endregion
 
 // #region Renderer Init
@@ -62,13 +64,38 @@ scene.add(directionalLight);
 // #region Character Init
 
 const cube = new THREE.Mesh(
-  new THREE.ConeGeometry(),
+  new THREE.BoxGeometry(),
   new THREE.MeshStandardMaterial({ color: 0xff0001 })
 );
 cube.position.y = 1;
-cube.castShadow = true;
+// cube.castShadow = true;
 scene.add(cube);
-camera.lookAt(cube.position); // Make camera look at the character Ref at the first time it renders!
+
+let character: THREE.Mesh;
+let mixer: THREE.AnimationMixer;
+let moveAnimation: THREE.AnimationAction;
+
+new GLTFLoader().load("/public/models/cute_cat_in_cute_banana.glb", (gltf) => {
+  character = gltf.scene.getObjectByName("Sketchfab_Scene") as THREE.Mesh;
+  mixer = new THREE.AnimationMixer(gltf.scene);
+  moveAnimation = mixer.clipAction(gltf.animations[0]);
+  character.position.set(0, 1, 0);
+  character.rotateY(-0.5 * Math.PI);
+  scene.add(character);
+  camera.lookAt(character.position);
+});
+
+// Character Movement
+
+function CharacterMoveUp(value: number) {
+  character.position.x += deltaTime * value;
+  camera.position.x += deltaTime * value;
+}
+
+function CharacterMoveRight(value: number) {
+  character.position.z += deltaTime * value;
+  camera.position.z += deltaTime * value;
+}
 
 // #endregion
 
@@ -105,7 +132,7 @@ renderer.domElement.addEventListener("mousemove", (e) => {
     -(e.clientY / renderer.domElement.clientHeight) * 2 + 1
   );
 
-  cube.lookAt(new THREE.Vector3(mouse.y, 0, mouse.x));
+  // cube.lookAt(new THREE.Vector3(mouse.y, 0, mouse.x));
   //   console.log("x: " + mouse.x);
   //   console.log("y: " + mouse.y);
   //   console.log(Math.cos(mouse.x));
@@ -118,37 +145,118 @@ renderer.domElement.addEventListener("mousemove", (e) => {
 const clock = new THREE.Clock();
 let deltaTime: number;
 
+let nextSecond = 0;
+
+function runCodeEachSeconds(elapsedTime: number, eachSeconds: number) {
+  if (
+    Math.trunc(elapsedTime) === nextSecond &&
+    Math.trunc(elapsedTime) % eachSeconds === 0
+  ) {
+    nextSecond += eachSeconds;
+    return true;
+  }
+  return false;
+}
+
+//#region Test Function
+
+let group = new THREE.Group();
+// group.add(cube);
+
+const EnemyList: THREE.Mesh[] = [];
+
+function RandomNumber(min: number, max: number) {
+  return min + Math.trunc(Math.random() * max) + 1;
+}
+
+function spawnEnemy(minRange: number, maxRange: number) {
+  let cube = new THREE.Mesh(
+    new THREE.BoxGeometry(),
+    new THREE.MeshStandardMaterial({
+      color: new THREE.Color(
+        `rgb(${RandomNumber(0, 255)}, ${RandomNumber(0, 255)}, ${RandomNumber(
+          0,
+          255
+        )})`
+      ),
+    })
+  );
+  scene.add(cube);
+  cube.matrixWorld.setPosition(
+    character.position.x + RandomNumber(0, 1)
+      ? RandomNumber(minRange, maxRange)
+      : -RandomNumber(minRange, maxRange),
+    1,
+    character.position.z + RandomNumber(0, 1)
+      ? RandomNumber(minRange, maxRange)
+      : -RandomNumber(minRange, maxRange)
+  );
+  EnemyList.push(cube);
+  console.log(cube.position);
+}
+
+//#endregion
+// new OrbitControls(camera, renderer.domElement);
+
 function EventTick() {
   requestAnimationFrame(EventTick);
   deltaTime = clock.getDelta();
+  mixer.update(deltaTime);
 
+  // Test
+  // console.log(cube.position);
+
+  let targetPosition = character.position;
+  EnemyList.forEach((enemy) => {
+    let targetNormalizedVector = new THREE.Vector3(
+      targetPosition.x - enemy.position.x,
+      targetPosition.y - enemy.position.y,
+      targetPosition.z - enemy.position.z
+    );
+    targetNormalizedVector.normalize();
+    enemy.translateOnAxis(targetNormalizedVector, 0.05);
+  });
+
+  if (runCodeEachSeconds(clock.getElapsedTime(), 3)) {
+    spawnEnemy(0, 20);
+  }
   if (keyMap["KeyW"] || keyMap["ArrowUp"]) {
-    console.log(cube.rotation.x);
-    CharacterMoveUp(20);
-    // cube.rotation.x = 0.5 * Math.PI;
+    CharacterMoveUp(5);
+    character.rotation.y = 0.5 * Math.PI;
   }
   if (keyMap["KeyS"] || keyMap["ArrowDown"]) {
-    CharacterMoveUp(-20);
+    CharacterMoveUp(-5);
+    character.rotation.y = -0.5 * Math.PI;
   }
   if (keyMap["KeyA"] || keyMap["ArrowLeft"]) {
-    CharacterMoveRight(-20);
+    CharacterMoveRight(-5);
+    character.rotation.y = Math.PI;
   }
   if (keyMap["KeyD"] || keyMap["ArrowRight"]) {
-    CharacterMoveRight(20);
+    CharacterMoveRight(5);
+    character.rotation.y = 0;
   }
-  //   cube.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), deltaTime * 0.5 * Math.PI);
+  if (keyMap["KeyZ"]) {
+    // spawnEnemy(0, 10);
+    console.log(RandomNumber(0, 1));
+  }
+  if (
+    !keyMap["KeyW"] &&
+    !keyMap["ArrowUp"] &&
+    !keyMap["KeyS"] &&
+    !keyMap["ArrowDown"] &&
+    !keyMap["KeyA"] &&
+    !keyMap["ArrowLeft"] &&
+    !keyMap["KeyD"] &&
+    !keyMap["ArrowRight"]
+  ) {
+    moveAnimation.stop();
+  } else {
+    moveAnimation.play();
+  }
+
   stats.update();
   render();
 }
 
 EventTick();
-
-function CharacterMoveUp(value: number) {
-  cube.position.x += deltaTime * value;
-  camera.position.x += deltaTime * value;
-}
-
-function CharacterMoveRight(value: number) {
-  cube.position.z += deltaTime * value;
-  camera.position.z += deltaTime * value;
-}
