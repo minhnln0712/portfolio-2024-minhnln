@@ -10,18 +10,24 @@ document.body.appendChild(stats.dom);
 
 // #region Scene Init
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x123456);
+scene.background = new THREE.Color(0xf1e850);
 // #endregion
 
 // #region Camera Init
 const camera = new THREE.PerspectiveCamera(
-  90,
+  75,
   window.innerWidth / window.innerHeight,
   0.1,
   1000
 );
-camera.position.set(-5, 15, 0); // Camera Default Position
-// camera.position.set(2, 10, 2); // Camera Default Position
+const CAMERA_DEFAULT_POSITION = new THREE.Vector3(-5, 5, 0);
+const CAMERA_MAX_POSITION = new THREE.Vector3(-10, 10, 0);
+const CAMERA_MIN_POSITION = new THREE.Vector3(-3, 3, 0);
+camera.position.set(
+  CAMERA_MAX_POSITION.x,
+  CAMERA_MAX_POSITION.y,
+  CAMERA_MAX_POSITION.z
+); // Camera Default Position
 // #endregion
 
 // #region Renderer Init
@@ -44,31 +50,60 @@ function render() {
 
 // #endregion
 
+// #region Sound Init
+
+const listener = new THREE.AudioListener();
+camera.add(listener);
+const sound = new THREE.Audio(listener);
+const audioLoader = new THREE.AudioLoader();
+audioLoader.load("/public/sounds/BGM.ogg", function (buffer) {
+  sound.setBuffer(buffer);
+  sound.setLoop(true);
+  sound.setVolume(0.2);
+  sound.play();
+});
+
+// #endregion
+
 // #region Light Init
 
-const ambientLight = new THREE.AmbientLight(0xeab676, 0.1);
+const ambientLight = new THREE.AmbientLight(0xffffff, 1);
 ambientLight.visible = true;
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 5);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
 directionalLight.visible = true;
-directionalLight.position.x = 5;
-directionalLight.position.z = 5;
-// directionalLight.shadow.camera.near = 0;
-// directionalLight.shadow.camera.far = 100;
-// directionalLight.castShadow = true;
+directionalLight.position.x = -10;
+directionalLight.position.y = 10;
+directionalLight.position.z = -5;
+directionalLight.shadow.camera.near = 0;
+directionalLight.shadow.camera.far = 1000;
+directionalLight.shadow.camera.left = -100;
+directionalLight.shadow.camera.right = 100;
+directionalLight.shadow.camera.top = 100;
+directionalLight.shadow.camera.bottom = -100;
+directionalLight.shadow.mapSize = new THREE.Vector2(4096, 4096);
+
+directionalLight.castShadow = true;
 scene.add(directionalLight);
+
+const helper = new THREE.CameraHelper(directionalLight.shadow.camera);
+scene.add(helper);
 
 // #endregion
 
 // #region Character Init
+
+const CHARACTER_MOVE_SPEED: number = 10;
+let characterHP = 100;
+let bIsCharacterDead = false;
 
 const cube = new THREE.Mesh(
   new THREE.BoxGeometry(),
   new THREE.MeshStandardMaterial({ color: 0xff0001 })
 );
 cube.position.y = 1;
-// cube.castShadow = true;
+cube.castShadow = true;
 scene.add(cube);
 
 let character: THREE.Mesh;
@@ -81,10 +116,18 @@ new GLTFLoader().load("/public/models/bananacat.glb", (gltf) => {
   mixer = new THREE.AnimationMixer(gltf.scene);
   idleAnimation = mixer.clipAction(gltf.animations[1]);
   moveAnimation = mixer.clipAction(gltf.animations[2]);
-  // character.position.set(0, 1, 0);
-  character.rotateY(-0.5 * Math.PI);
+  // character.position.set(0, 0, 0);
+  character.rotation.y = -0.75 * Math.PI;
+
+  gltf.scene.traverse((node) => {
+    if ((node as THREE.Mesh).isMesh) {
+      node.castShadow = true;
+    }
+  });
+
   scene.add(character);
   camera.lookAt(character.position);
+  directionalLight.target = character;
 });
 
 // Character Movement
@@ -92,26 +135,66 @@ new GLTFLoader().load("/public/models/bananacat.glb", (gltf) => {
 function CharacterMoveUp(value: number) {
   character.position.x += deltaTime * value;
   camera.position.x += deltaTime * value;
+  directionalLight.position.x += deltaTime * value;
 }
 
 function CharacterMoveRight(value: number) {
   character.position.z += deltaTime * value;
   camera.position.z += deltaTime * value;
+  directionalLight.position.z += deltaTime * value;
 }
+
+// Other Character Function
+
+function CharacterTakeDamage(value: number) {
+  if (characterHP > 0) {
+    characterHP -= value;
+  }
+}
+
+// #endregion
+
+// #region Model
+
+new GLTFLoader().load("/public/models/untitled.glb", (gltf) => {
+  (gltf.scene.getObjectByName("SM_MERGED_Plane_2_1") as THREE.Mesh).material =
+    new THREE.MeshStandardMaterial({ color: 0xfdda0d });
+
+  gltf.scene.traverse((node) => {
+    if ((node as THREE.Mesh).isMesh) {
+      node.castShadow = true;
+      node.receiveShadow = true;
+    }
+  });
+
+  gltf.scene.position.y = 0.1;
+
+  scene.add(gltf.scene);
+});
 
 // #endregion
 
 // #region Main Surface
 
 // Add a Plane for the surface
-const planeGeometry = new THREE.PlaneGeometry(1000, 1000, 1, 1);
-const texture = new THREE.TextureLoader().load("/public/images/testText.jpg");
-const plane = new THREE.Mesh(planeGeometry, new THREE.MeshStandardMaterial());
+const plane = new THREE.Mesh(
+  new THREE.PlaneGeometry(1000, 1000, 1, 1),
+  new THREE.MeshStandardMaterial({ color: 0xfdda0d })
+);
 plane.rotateX(-Math.PI / 2);
 plane.receiveShadow = true;
 plane.castShadow = true;
-plane.material.map = texture;
 scene.add(plane);
+
+const plane2 = new THREE.Mesh(
+  new THREE.PlaneGeometry(1000, 1000, 1, 1),
+  new THREE.MeshStandardMaterial({ color: 0xfdda0d })
+);
+plane2.rotateX(-Math.PI / 2);
+plane2.position.y = -1;
+plane2.receiveShadow = true;
+plane2.castShadow = true;
+scene.add(plane2);
 
 // #endregion
 
@@ -140,6 +223,28 @@ renderer.domElement.addEventListener("mousemove", (e) => {
   //   console.log(Math.cos(mouse.x));
 
   //   cube.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), Math.cos(mouse.x) * 0.01);
+});
+
+document.addEventListener("wheel", (e) => {
+  if (e.deltaY < 0) {
+    if (
+      (camera.position.y < CAMERA_MAX_POSITION.y &&
+        camera.position.y > CAMERA_MIN_POSITION.y) ||
+      camera.position.y === CAMERA_MAX_POSITION.y
+    ) {
+      camera.position.x += 1;
+      camera.position.y -= 1;
+    }
+  } else {
+    if (
+      (camera.position.y < CAMERA_MAX_POSITION.y &&
+        camera.position.y > CAMERA_MIN_POSITION.y) ||
+      camera.position.y === CAMERA_MIN_POSITION.y
+    ) {
+      camera.position.x -= 1;
+      camera.position.y += 1;
+    }
+  }
 });
 
 // #endregion
@@ -202,68 +307,97 @@ function spawnEnemy(minRange: number, maxRange: number) {
 }
 
 //#endregion
-new OrbitControls(camera, renderer.domElement);
+// new OrbitControls(camera, renderer.domElement);
 
 function EventTick() {
   requestAnimationFrame(EventTick);
-  deltaTime = clock.getDelta();
-  mixer.update(deltaTime);
-  camera.lookAt(character.position);
+  if (!bIsCharacterDead) {
+    deltaTime = clock.getDelta();
+    mixer.update(deltaTime);
+    camera.lookAt(character.position);
 
-  // Test
-  // console.log(cube.position);
+    // Test
+    // console.log(cube.position);
 
-  let targetPosition = character.position;
-  EnemyList.forEach((enemy) => {
-    let targetNormalizedVector = new THREE.Vector3(
-      targetPosition.x - enemy.position.x,
-      targetPosition.y - enemy.position.y,
-      targetPosition.z - enemy.position.z
-    );
-    targetNormalizedVector.normalize();
-    enemy.translateOnAxis(targetNormalizedVector, 10 * deltaTime);
-  });
+    let targetPosition = character.position;
+    EnemyList.forEach((enemy) => {
+      let targetNormalizedVector = new THREE.Vector3(
+        targetPosition.x - enemy.position.x,
+        targetPosition.y - enemy.position.y,
+        targetPosition.z - enemy.position.z
+      );
+      targetNormalizedVector.normalize();
+      enemy.translateOnAxis(targetNormalizedVector, 10 * deltaTime);
+    });
 
-  if (runCodeEachSeconds(clock.getElapsedTime(), 3)) {
-    // spawnEnemy(0, 20);
-  }
-  if (keyMap["KeyW"] || keyMap["ArrowUp"]) {
-    CharacterMoveUp(10);
-    character.rotation.y = 0.5 * Math.PI;
-  }
-  if (keyMap["KeyS"] || keyMap["ArrowDown"]) {
-    CharacterMoveUp(-10);
-    character.rotation.y = -0.5 * Math.PI;
-  }
-  if (keyMap["KeyA"] || keyMap["ArrowLeft"]) {
-    CharacterMoveRight(-10);
-    character.rotation.y = Math.PI;
-  }
-  if (keyMap["KeyD"] || keyMap["ArrowRight"]) {
-    CharacterMoveRight(10);
-    character.rotation.y = 0;
-  }
-  if (keyMap["KeyZ"]) {
-    spawnEnemy(50, 100);
-    console.log(character.position);
-  }
-  if (
-    !keyMap["KeyW"] &&
-    !keyMap["ArrowUp"] &&
-    !keyMap["KeyS"] &&
-    !keyMap["ArrowDown"] &&
-    !keyMap["KeyA"] &&
-    !keyMap["ArrowLeft"] &&
-    !keyMap["KeyD"] &&
-    !keyMap["ArrowRight"]
-  ) {
-    moveAnimation.stop();
-    idleAnimation.play();
-  } else {
-    idleAnimation.stop();
-    moveAnimation.play();
-  }
+    if (runCodeEachSeconds(clock.getElapsedTime(), 3)) {
+      // spawnEnemy(0, 20);
+    }
 
+    // Movement
+    if (keyMap["KeyW"]) {
+      CharacterMoveUp(CHARACTER_MOVE_SPEED);
+      character.rotation.y = 0.5 * Math.PI;
+    }
+    if (keyMap["KeyS"]) {
+      CharacterMoveUp(-CHARACTER_MOVE_SPEED);
+      character.rotation.y = -0.5 * Math.PI;
+    }
+    if (keyMap["KeyA"]) {
+      CharacterMoveRight(-CHARACTER_MOVE_SPEED);
+      character.rotation.y = Math.PI;
+    }
+    if (keyMap["KeyD"]) {
+      CharacterMoveRight(CHARACTER_MOVE_SPEED);
+      character.rotation.y = 0;
+    }
+    if (keyMap["KeyW"] && keyMap["KeyD"]) {
+      character.rotation.y = 0.25 * Math.PI;
+    }
+    if (keyMap["KeyS"] && keyMap["KeyD"]) {
+      character.rotation.y = -0.25 * Math.PI;
+    }
+    if (keyMap["KeyW"] && keyMap["KeyA"]) {
+      character.rotation.y = 0.75 * Math.PI;
+    }
+    if (keyMap["KeyS"] && keyMap["KeyA"]) {
+      character.rotation.y = -0.75 * Math.PI;
+    }
+    if (
+      (keyMap["KeyW"] && keyMap["KeyS"]) ||
+      (keyMap["KeyA"] && keyMap["KeyD"])
+    ) {
+      moveAnimation.stop();
+      idleAnimation.play();
+    }
+    if (keyMap["KeyZ"]) {
+      spawnEnemy(50, 100);
+      console.log(character.position);
+    }
+    if (keyMap["KeyX"]) {
+      plane2.position.y += 5 * deltaTime;
+    }
+    if (keyMap["KeyC"]) {
+      plane2.position.y -= 5 * deltaTime;
+    }
+
+    if (
+      !keyMap["KeyW"] &&
+      !keyMap["ArrowUp"] &&
+      !keyMap["KeyS"] &&
+      !keyMap["ArrowDown"] &&
+      !keyMap["KeyA"] &&
+      !keyMap["ArrowLeft"] &&
+      !keyMap["KeyD"] &&
+      !keyMap["ArrowRight"]
+    ) {
+      moveAnimation.stop();
+      idleAnimation.play();
+    } else {
+      idleAnimation.stop();
+      moveAnimation.play();
+    }
+  }
   stats.update();
   render();
 }
