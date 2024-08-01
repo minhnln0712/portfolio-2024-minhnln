@@ -3,6 +3,10 @@ import * as THREE from "three";
 import Stats from "three/addons/libs/stats.module.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 // Initialization
 const stats = new Stats();
@@ -10,7 +14,9 @@ document.body.appendChild(stats.dom);
 
 // #region Scene Init
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xf1e850);
+scene.background = new THREE.Color(0x000000);
+scene.castShadow = true;
+// scene.
 // #endregion
 
 // #region Camera Init
@@ -20,33 +26,55 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-const CAMERA_DEFAULT_POSITION = new THREE.Vector3(-5, 5, 0);
-const CAMERA_MAX_POSITION = new THREE.Vector3(-10, 10, 0);
-const CAMERA_MIN_POSITION = new THREE.Vector3(-3, 3, 0);
+const CAMERA_DEFAULT_POSITION = new THREE.Vector3(-10, 10, 0);
+const CAMERA_MAX_POSITION = new THREE.Vector3(-20, 20, 0);
+const CAMERA_MIN_POSITION = new THREE.Vector3(-5, 5, 0);
 camera.position.set(
-  CAMERA_MAX_POSITION.x,
-  CAMERA_MAX_POSITION.y,
-  CAMERA_MAX_POSITION.z
-); // Camera Default Position
+  CAMERA_DEFAULT_POSITION.x,
+  CAMERA_DEFAULT_POSITION.y,
+  CAMERA_DEFAULT_POSITION.z
+);
 // #endregion
 
 // #region Renderer Init
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
+renderer.setClearColor(0x000000, 0);
+renderer.toneMapping = THREE.ReinhardToneMapping;
+
 document.body.appendChild(renderer.domElement);
+
+function render() {
+  composer.render();
+}
+
+// Bloom Effect
+const renderScene = new RenderPass(scene, camera);
+
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight), .4, 0, 0.1);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(renderScene);
+composer.addPass(bloomPass);
+
+const outputPass = new OutputPass();
+composer.addPass(outputPass);
+composer.renderToScreen = true;
+
+renderer.toneMappingExposure = Math.pow(1, 4.0);
 
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
   render();
 });
 
-function render() {
-  renderer.render(scene, camera);
-}
 
 // #endregion
 
@@ -67,14 +95,10 @@ audioLoader.load("/public/sounds/BGM.ogg", function (buffer) {
 
 // #region Light Init
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 1);
-ambientLight.visible = true;
-scene.add(ambientLight);
-
-const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+const directionalLight = new THREE.DirectionalLight(0x3d77a6, 1);
 directionalLight.visible = true;
-directionalLight.position.x = -10;
-directionalLight.position.y = 10;
+directionalLight.position.x = -20;
+directionalLight.position.y = 20;
 directionalLight.position.z = -5;
 directionalLight.shadow.camera.near = 0;
 directionalLight.shadow.camera.far = 1000;
@@ -82,13 +106,16 @@ directionalLight.shadow.camera.left = -100;
 directionalLight.shadow.camera.right = 100;
 directionalLight.shadow.camera.top = 100;
 directionalLight.shadow.camera.bottom = -100;
-directionalLight.shadow.mapSize = new THREE.Vector2(4096, 4096);
+directionalLight.shadow.mapSize = new THREE.Vector2(8192, 8192);
 
 directionalLight.castShadow = true;
 scene.add(directionalLight);
 
-const helper = new THREE.CameraHelper(directionalLight.shadow.camera);
-scene.add(helper);
+// const helper = new THREE.CameraHelper(directionalLight.shadow.camera);
+// scene.add(helper);
+
+const pointLight = new THREE.PointLight(0xffffff, 1000);
+camera.add(pointLight);
 
 // #endregion
 
@@ -97,14 +124,6 @@ scene.add(helper);
 const CHARACTER_MOVE_SPEED: number = 10;
 let characterHP = 100;
 let bIsCharacterDead = false;
-
-const cube = new THREE.Mesh(
-  new THREE.BoxGeometry(),
-  new THREE.MeshStandardMaterial({ color: 0xff0001 })
-);
-cube.position.y = 1;
-cube.castShadow = true;
-scene.add(cube);
 
 let character: THREE.Mesh;
 let mixer: THREE.AnimationMixer;
@@ -116,7 +135,13 @@ new GLTFLoader().load("/public/models/bananacat.glb", (gltf) => {
   mixer = new THREE.AnimationMixer(gltf.scene);
   idleAnimation = mixer.clipAction(gltf.animations[1]);
   moveAnimation = mixer.clipAction(gltf.animations[2]);
-  // character.position.set(0, 0, 0);
+
+  character.position.set(16, 0, 16);
+  camera.position.set(
+    camera.position.x + character.position.x,
+    camera.position.y + character.position.y,
+    camera.position.z + character.position.z
+  );
   character.rotation.y = -0.75 * Math.PI;
 
   gltf.scene.traverse((node) => {
@@ -136,6 +161,7 @@ function CharacterMoveUp(value: number) {
   character.position.x += deltaTime * value;
   camera.position.x += deltaTime * value;
   directionalLight.position.x += deltaTime * value;
+
 }
 
 function CharacterMoveRight(value: number) {
@@ -156,9 +182,76 @@ function CharacterTakeDamage(value: number) {
 
 // #region Model
 
-new GLTFLoader().load("/public/models/untitled.glb", (gltf) => {
-  (gltf.scene.getObjectByName("SM_MERGED_Plane_2_1") as THREE.Mesh).material =
-    new THREE.MeshStandardMaterial({ color: 0xfdda0d });
+const EmissiveModelTextureList = [
+  {
+    name: "Portfolio_2", emissiveColor: "#FE3EA5", emissiveIntensity: 5, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_3", emissiveColor: "#FFB5DA", emissiveIntensity: 10, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_4", emissiveColor: "#FF7DD3", emissiveIntensity: 5, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_5", emissiveColor: "#6420AB", emissiveIntensity: .1, side: THREE.DoubleSide
+  }, {
+    name: "Portfolio_7", emissiveColor: "#FFFF00", emissiveIntensity: .2, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_9", emissiveColor: "#FFF800", emissiveIntensity: 1, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_10", emissiveColor: "#1877F2", emissiveIntensity: 1, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_11", emissiveColor: "#ffffff", emissiveIntensity: 1, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_12", emissiveColor: "#ffffff", emissiveIntensity: .5, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_13", emissiveColor: "#0077B5", emissiveIntensity: 1, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_16", emissiveColor: "#FF0000", emissiveIntensity: 1, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_17", emissiveColor: "#730901", emissiveIntensity: 1, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_18", emissiveColor: "#ffff00", emissiveIntensity: 1, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_20", emissiveColor: "#009D46", emissiveIntensity: 1, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_21", emissiveColor: "#FF2B00", emissiveIntensity: 1, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_22", emissiveColor: "#FFFF00", emissiveIntensity: 1, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_23", emissiveColor: "#01224D", emissiveIntensity: 1, side: THREE.DoubleSide
+  }, {
+    name: "Portfolio_24", emissiveColor: "#9F153E", emissiveIntensity: 10, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_25", emissiveColor: "#FF204D", emissiveIntensity: 20, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_26", emissiveColor: "#5C0E40", emissiveIntensity: 10, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_27", emissiveColor: "#211952", emissiveIntensity: 1, side: THREE.DoubleSide
+  }, {
+    name: "Portfolio_28", emissiveColor: "#826FFF", emissiveIntensity: 10, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_29", emissiveColor: "#15F5B9", emissiveIntensity: 5, side: THREE.FrontSide
+  }, {
+    name: "Portfolio_42", emissiveColor: "#01224D", emissiveIntensity: 20, side: THREE.FrontSide
+  },
+
+];
+
+
+new GLTFLoader().load("/public/models/PortfolioMesh.glb", (gltf) => {
+  console.log(gltf.scene);
+  // (gltf.scene.getObjectByName("Portfolio_5") as THREE.Mesh).material =
+  //   new THREE.MeshStandardMaterial({ emissive: 0xfdda0d, side: THREE.BackSide, emissiveIntensity: .1 });
+  // (gltf.scene.getObjectByName("Portfolio_42") as THREE.Mesh).material =
+  //   new THREE.MeshStandardMaterial({ color: 0xfdda0d });
+  EmissiveModelTextureList.forEach(mesh => {
+    (gltf.scene.getObjectByName(mesh.name) as THREE.Mesh).material =
+      new THREE.MeshStandardMaterial({
+        emissive: mesh.emissiveColor,
+        emissiveIntensity: mesh.emissiveIntensity,
+        side: mesh.side
+      });
+  });
+
+
 
   gltf.scene.traverse((node) => {
     if ((node as THREE.Mesh).isMesh) {
@@ -167,7 +260,8 @@ new GLTFLoader().load("/public/models/untitled.glb", (gltf) => {
     }
   });
 
-  gltf.scene.position.y = 0.1;
+  // gltf.scene.position.y = 0;
+  gltf.scene.rotateY(-0.75 * Math.PI);
 
   scene.add(gltf.scene);
 });
@@ -177,9 +271,10 @@ new GLTFLoader().load("/public/models/untitled.glb", (gltf) => {
 // #region Main Surface
 
 // Add a Plane for the surface
+
 const plane = new THREE.Mesh(
   new THREE.PlaneGeometry(1000, 1000, 1, 1),
-  new THREE.MeshStandardMaterial({ color: 0xfdda0d })
+  new THREE.MeshStandardMaterial({ color: 0x0080bf })
 );
 plane.rotateX(-Math.PI / 2);
 plane.receiveShadow = true;
@@ -194,11 +289,11 @@ plane2.rotateX(-Math.PI / 2);
 plane2.position.y = -1;
 plane2.receiveShadow = true;
 plane2.castShadow = true;
-scene.add(plane2);
+// scene.add(plane2);
 
 // #endregion
 
-function BeginPlay() {}
+function BeginPlay() { }
 BeginPlay();
 
 // #region InputKey
@@ -298,15 +393,16 @@ function spawnEnemy(minRange: number, maxRange: number) {
     enemyx,
     1,
     character.position.z +
-      (RandomNumber(0, 1)
-        ? RandomNumber(minRange, maxRange)
-        : -RandomNumber(minRange, maxRange))
+    (RandomNumber(0, 1)
+      ? RandomNumber(minRange, maxRange)
+      : -RandomNumber(minRange, maxRange))
   );
   EnemyList.push(cube);
   console.log(cube.position);
 }
 
 //#endregion
+
 // new OrbitControls(camera, renderer.domElement);
 
 function EventTick() {
@@ -334,7 +430,7 @@ function EventTick() {
       // spawnEnemy(0, 20);
     }
 
-    // Movement
+    // #region Movement and Controls
     if (keyMap["KeyW"]) {
       CharacterMoveUp(CHARACTER_MOVE_SPEED);
       character.rotation.y = 0.5 * Math.PI;
@@ -397,6 +493,7 @@ function EventTick() {
       idleAnimation.stop();
       moveAnimation.play();
     }
+    // #endregion
   }
   stats.update();
   render();
