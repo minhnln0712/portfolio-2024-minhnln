@@ -481,38 +481,7 @@ function spawnEnemy(minRange: number, maxRange: number, movementSpeed: number) {
 function EventTick() {
   requestAnimationFrame(EventTick);
   if (characterHP <= 0) bIsCharacterDead = true;
-  if (keyMap["KeyX"]) {
-    console.log(EnemyList);
-
-  }
-  if (keyMap["KeyR"] && bIsCharacterDead) {
-
-    characterHP = CHARACTER_HEALTH_POINT;
-    character.position.set(CHARACTER_SPAWN_LOCATION.x,
-      CHARACTER_SPAWN_LOCATION.y,
-      CHARACTER_SPAWN_LOCATION.z);
-    camera.position.set(
-      CAMERA_DEFAULT_POSITION.x + CHARACTER_SPAWN_LOCATION.x,
-      CAMERA_DEFAULT_POSITION.y + CHARACTER_SPAWN_LOCATION.y,
-      CAMERA_DEFAULT_POSITION.z + CHARACTER_SPAWN_LOCATION.z
-    );
-    directionalLight.position.set(
-      DIRECTIONAL_LIGHT_SPAWN_LOCATION.x,
-      DIRECTIONAL_LIGHT_SPAWN_LOCATION.y,
-      DIRECTIONAL_LIGHT_SPAWN_LOCATION.z);
-    weaponBananaKatana.position.set(
-      CHARACTER_SPAWN_LOCATION.x,
-      CHARACTER_SPAWN_LOCATION.y,
-      CHARACTER_SPAWN_LOCATION.z)
-    EnemyList.forEach((enemy) => {
-      scene.remove(enemy.mesh);
-      EnemyList.splice(EnemyList.indexOf(enemy), 1);
-      if (EnemyList.length === 0) {
-        bIsCharacterDead = false;
-        bIsTriggerSurvivalMode = false;
-      }
-    });
-  }
+  if (keyMap["KeyR"] && bIsCharacterDead) resetTheGame();
   if (!bIsCharacterDead) {
     deltaTime = clock.getDelta();
     characterMixer.update(deltaTime);
@@ -615,4 +584,32 @@ function EventTick() {
   }
   stats.update();
   render();
+}
+
+function resetTheGame() {
+  characterHP = CHARACTER_HEALTH_POINT;
+  character.position.set(CHARACTER_SPAWN_LOCATION.x,
+    CHARACTER_SPAWN_LOCATION.y,
+    CHARACTER_SPAWN_LOCATION.z);
+  camera.position.set(
+    CAMERA_DEFAULT_POSITION.x + CHARACTER_SPAWN_LOCATION.x,
+    CAMERA_DEFAULT_POSITION.y + CHARACTER_SPAWN_LOCATION.y,
+    CAMERA_DEFAULT_POSITION.z + CHARACTER_SPAWN_LOCATION.z
+  );
+  directionalLight.position.set(
+    DIRECTIONAL_LIGHT_SPAWN_LOCATION.x,
+    DIRECTIONAL_LIGHT_SPAWN_LOCATION.y,
+    DIRECTIONAL_LIGHT_SPAWN_LOCATION.z);
+  weaponBananaKatana.position.set(
+    CHARACTER_SPAWN_LOCATION.x,
+    CHARACTER_SPAWN_LOCATION.y,
+    CHARACTER_SPAWN_LOCATION.z);
+  EnemyList.forEach((enemy) => {
+    scene.remove(enemy.mesh);
+    EnemyList.splice(EnemyList.indexOf(enemy), 1);
+    if (EnemyList.length === 0) {
+      bIsCharacterDead = false;
+      bIsTriggerSurvivalMode = false;
+    }
+  });
 }
