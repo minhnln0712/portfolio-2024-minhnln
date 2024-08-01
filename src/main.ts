@@ -9,74 +9,89 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 // Initialization
-const stats = new Stats();
-document.body.appendChild(stats.dom);
+let stats: Stats;
+let scene: THREE.Scene;
 
-// #region Scene Init
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
-scene.castShadow = true;
-// scene.
-// #endregion
-
-// #region Camera Init
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
+// Camera
+let camera: THREE.PerspectiveCamera;
 const CAMERA_DEFAULT_POSITION = new THREE.Vector3(-10, 10, 0);
 const CAMERA_MAX_POSITION = new THREE.Vector3(-20, 20, 0);
 const CAMERA_MIN_POSITION = new THREE.Vector3(-5, 5, 0);
-camera.position.set(
-  CAMERA_DEFAULT_POSITION.x,
-  CAMERA_DEFAULT_POSITION.y,
-  CAMERA_DEFAULT_POSITION.z
-);
-// #endregion
 
-// #region Renderer Init
+init();
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.setClearColor(0x000000, 0);
-renderer.toneMapping = THREE.ReinhardToneMapping;
+async function init() {
+  // Check application stats
+  stats = new Stats();
+  document.body.appendChild(stats.dom);
 
-document.body.appendChild(renderer.domElement);
+  // #region Scene Init
 
-function render() {
-  composer.render();
-}
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000000);
+  scene.castShadow = true;
 
-// Bloom Effect
-const renderScene = new RenderPass(scene, camera);
+  // #endregion
 
-const bloomPass = new UnrealBloomPass(
-  new THREE.Vector2(window.innerWidth, window.innerHeight), .4, 0, 0.1);
+  // #region Camera Init
 
-const composer = new EffectComposer(renderer);
-composer.addPass(renderScene);
-composer.addPass(bloomPass);
+  camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+  );
+  camera.position.set(
+    CAMERA_DEFAULT_POSITION.x,
+    CAMERA_DEFAULT_POSITION.y,
+    CAMERA_DEFAULT_POSITION.z
+  );
 
-const outputPass = new OutputPass();
-composer.addPass(outputPass);
-composer.renderToScreen = true;
+  // #endregion
 
-renderer.toneMappingExposure = Math.pow(1, 4.0);
+  // #region Renderer Init
 
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
-  composer.setSize(window.innerWidth, window.innerHeight);
-  render();
-});
+  renderer.shadowMap.enabled = true;
+  renderer.setClearColor(0x000000, 0);
+  renderer.toneMapping = THREE.ReinhardToneMapping;
+
+  document.body.appendChild(renderer.domElement);
+
+  function render() {
+    composer.render();
+  }
+
+  // Bloom Effect
+  const renderScene = new RenderPass(scene, camera);
+
+  const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight), .3, 0, 0.1);
+
+  const composer = new EffectComposer(renderer);
+  composer.addPass(renderScene);
+  composer.addPass(bloomPass);
+
+  const outputPass = new OutputPass();
+  composer.addPass(outputPass);
+  composer.renderToScreen = true;
+
+  renderer.toneMappingExposure = Math.pow(1, 4.0);
+
+  window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
+    render();
+  });
 
 
-// #endregion
+  // #endregion
+
+}
 
 // #region Sound Init
 
