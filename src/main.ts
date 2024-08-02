@@ -2,7 +2,7 @@ import "./style.css";
 import * as THREE from "three";
 import Stats from "three/addons/libs/stats.module.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+// import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TrackballControls } from "three/addons/controls/TrackballControls.js";
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -21,7 +21,7 @@ let bIsAccessPortfolio = false;
 let renderer: THREE.WebGLRenderer;
 let camera: THREE.PerspectiveCamera;
 const CAMERA_DEFAULT_POSITION = new THREE.Vector3(-10, 10, 0);
-let cameraControl: OrbitControls;
+// let cameraControl: OrbitControls;
 let cameraControl2: TrackballControls;
 let renderScene: RenderPass;
 let bloomPass: UnrealBloomPass;
@@ -32,7 +32,7 @@ let outputPass: OutputPass;
 // Character Init
 
 const CHARACTER_MOVE_SPEED: number = 10;
-const CHARACTER_HEALTH_POINT: number = 100;
+// const CHARACTER_HEALTH_POINT: number = 100;
 let characterHP = 100;
 let bIsCharacterDead = false;
 const CHARACTER_SPAWN_LOCATION = new THREE.Vector3(13, 0, 12);
@@ -87,6 +87,7 @@ let numOfAssetsLoaded = 0;
 const TOTAL_NUMBER_OF_ASSETS = 23;
 
 loadingManager.onProgress = (url, loaded, total) => {
+  console.log(url + total);
   numOfAssetsLoaded = loaded;
   progressBar.value = (loaded / TOTAL_NUMBER_OF_ASSETS) * 100;
 }
@@ -228,7 +229,7 @@ async function init() {
 
   // #region Character Init
 
-  const characterGltf = await loader.loadAsync('/public/models/bananacat.glb');
+  const characterGltf = await loader.loadAsync('./public/models/bananacat.glb');
   character = characterGltf.scene.getObjectByName(characterGltf.scene.name) as THREE.Mesh;
   characterMixer = new THREE.AnimationMixer(character);
   characterIdleAnimation = characterMixer.clipAction(characterGltf.animations[1]);
@@ -311,7 +312,7 @@ async function init() {
 
   ];
 
-  const portfolioGltf = await loader.loadAsync('/public/models/PortfolioMesh.glb');
+  const portfolioGltf = await loader.loadAsync('./public/models/PortfolioMesh.glb');
   portfolioModel = portfolioGltf.scene;
 
   // (portfolioModel.getObjectByName("Portfolio_5") as THREE.Mesh).material =
@@ -335,7 +336,7 @@ async function init() {
   portfolioModel.rotateY(-0.75 * Math.PI);
   scene.add(portfolioModel);
 
-  const redButtonGltf = await loader.loadAsync('/public/models/red_button.glb');
+  const redButtonGltf = await loader.loadAsync('./public/models/red_button.glb');
   redButton = redButtonGltf.scene.getObjectByName(redButtonGltf.scene.name) as THREE.Mesh;
   redButton.position.set(28, 1, -25.5);
   redButton.rotateY(.25 * Math.PI);
@@ -346,21 +347,21 @@ async function init() {
 
   // Enemy Model
 
-  const enemyMouseGltf = await loader.loadAsync('/public/models/mouse (1).glb');
+  const enemyMouseGltf = await loader.loadAsync('./public/models/mouse (1).glb');
   enemyMouse = enemyMouseGltf.scene.getObjectByName(enemyMouseGltf.scene.name) as THREE.Mesh;
   enemyMouse.scale.set(.4, .4, .4);
   enemyMouseMixer = new THREE.AnimationMixer(enemyMouse);
   enemyMouseMoveAnimation = enemyMouseMixer.clipAction(enemyMouseGltf.animations[0]);
   enemyMouseMoveAnimation.play();
 
-  const enemyCockroachGltf = await loader.loadAsync('/public/models/cockroach_minecraft.glb');
+  const enemyCockroachGltf = await loader.loadAsync('./public/models/cockroach_minecraft.glb');
   enemyCockroach = enemyCockroachGltf.scene.getObjectByName(enemyCockroachGltf.scene.name) as THREE.Mesh;
   enemyCockroach.scale.set(3, 3, 3);
   enemyCockroachMixer = new THREE.AnimationMixer(enemyCockroach);
   enemyCockroachMoveAnimation = enemyCockroachMixer.clipAction(enemyCockroachGltf.animations[0]);
   enemyCockroachMoveAnimation.play();
 
-  const weaponBananaKatanaGltf = await loader.loadAsync('/public/models/batana.glb');
+  const weaponBananaKatanaGltf = await loader.loadAsync('./public/models/batana.glb');
   weaponBananaKatana = weaponBananaKatanaGltf.scene.getObjectByName(weaponBananaKatanaGltf.scene.name) as THREE.Mesh;
   weaponBananaKatana.position.set(CHARACTER_SPAWN_LOCATION.x,
     CHARACTER_SPAWN_LOCATION.y,
@@ -368,11 +369,11 @@ async function init() {
   weaponBananaKatanaCollision = new THREE.Box3();
   weaponBananaKatanaCollision.setFromObject(weaponBananaKatana);
 
-  // const weaponBananaGunGltf = await loader.loadAsync('/public/models/banana_pistol.glb');
+  // const weaponBananaGunGltf = await loader.loadAsync('./public/models/banana_pistol.glb');
   // weaponBananaGun = weaponBananaGunGltf.scene;
-  // const weaponBananaGunAmmoGltf = await loader.loadAsync('/public/models/banana.glb');
+  // const weaponBananaGunAmmoGltf = await loader.loadAsync('./public/models/banana.glb');
   // weaponBananaGunAmmo = weaponBananaGunAmmoGltf.scene;
-  // const weaponBananaBombGltf = await loader.loadAsync('/public/models/banana_peel_mario_kart.glb');
+  // const weaponBananaBombGltf = await loader.loadAsync('./public/models/banana_peel_mario_kart.glb');
   // weaponBananaBomb = weaponBananaBombGltf.scene;
 
   // #endregion
@@ -420,25 +421,25 @@ async function init() {
   survivalSound = new THREE.Audio(listener);
   hitSound = new THREE.Audio(listener);
 
-  audioLoader.load("/public/sounds/BGM.ogg", function (buffer) {
+  audioLoader.load("./public/sounds/BGM.ogg", function (buffer) {
     bgmSound.setBuffer(buffer);
     bgmSound.setLoop(true);
     bgmSound.setVolume(0.2);
   });
 
-  audioLoader.load("/public/sounds/lose.ogg", function (buffer) {
+  audioLoader.load("./public/sounds/lose.ogg", function (buffer) {
     loseSound.setBuffer(buffer);
     loseSound.setLoop(false);
     loseSound.setVolume(.5);
   });
 
-  audioLoader.load("/public/sounds/survival.ogg", function (buffer) {
+  audioLoader.load("./public/sounds/survival.ogg", function (buffer) {
     survivalSound.setBuffer(buffer);
     survivalSound.setLoop(true);
     survivalSound.setVolume(.25);
   });
 
-  audioLoader.load("/public/sounds/hit.ogg", function (buffer) {
+  audioLoader.load("./public/sounds/hit.ogg", function (buffer) {
     hitSound.setBuffer(buffer);
     hitSound.setLoop(false);
     hitSound.setVolume(.25);
@@ -474,11 +475,11 @@ function CharacterMoveRight(value: number) {
 
 // Other Character Function
 
-function CharacterTakeDamage(value: number) {
-  if (characterHP > 0) {
-    characterHP -= value;
-  }
-}
+// function CharacterTakeDamage(value: number) {
+//   if (characterHP > 0) {
+//     characterHP -= value;
+//   }
+// }
 
 // #endregion
 
@@ -513,15 +514,6 @@ document.addEventListener("keyup", onDocumentKey);
 // });
 
 // #endregion
-
-function runCodeEachSeconds(elapsedTime: number, eachSeconds: number) {
-  if (
-    Math.trunc(elapsedTime) % eachSeconds === 0
-  ) {
-    return true;
-  }
-  return false;
-}
 
 //#region Test Function
 
@@ -563,8 +555,6 @@ function EventTick() {
   }
   if (keyMap["KeyR"] && bIsCharacterDead) resetTheGame();
   if (!bIsCharacterDead) {
-    // cameraControl.target.set(character.position.x, character.position.y, character.position.z);
-    // cameraControl.update();
     cameraControl2.target.set(character.position.x, character.position.y, character.position.z);
     cameraControl2.update();
     deltaTime = clock.getDelta();
