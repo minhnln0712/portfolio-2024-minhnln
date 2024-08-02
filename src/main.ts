@@ -229,7 +229,7 @@ async function init() {
 
   // #region Character Init
 
-  const characterGltf = await loader.loadAsync('./public/models/bananacat.glb');
+  const characterGltf = await loader.loadAsync('models/bananacat.glb');
   character = characterGltf.scene.getObjectByName(characterGltf.scene.name) as THREE.Mesh;
   characterMixer = new THREE.AnimationMixer(character);
   characterIdleAnimation = characterMixer.clipAction(characterGltf.animations[1]);
@@ -312,7 +312,7 @@ async function init() {
 
   ];
 
-  const portfolioGltf = await loader.loadAsync('./public/models/PortfolioMesh.glb');
+  const portfolioGltf = await loader.loadAsync('models/PortfolioMesh.glb');
   portfolioModel = portfolioGltf.scene;
 
   // (portfolioModel.getObjectByName("Portfolio_5") as THREE.Mesh).material =
@@ -336,7 +336,7 @@ async function init() {
   portfolioModel.rotateY(-0.75 * Math.PI);
   scene.add(portfolioModel);
 
-  const redButtonGltf = await loader.loadAsync('./public/models/red_button.glb');
+  const redButtonGltf = await loader.loadAsync('models/red_button.glb');
   redButton = redButtonGltf.scene.getObjectByName(redButtonGltf.scene.name) as THREE.Mesh;
   redButton.position.set(28, 1, -25.5);
   redButton.rotateY(.25 * Math.PI);
@@ -347,21 +347,21 @@ async function init() {
 
   // Enemy Model
 
-  const enemyMouseGltf = await loader.loadAsync('./public/models/mouse (1).glb');
+  const enemyMouseGltf = await loader.loadAsync('models/mouse (1).glb');
   enemyMouse = enemyMouseGltf.scene.getObjectByName(enemyMouseGltf.scene.name) as THREE.Mesh;
   enemyMouse.scale.set(.4, .4, .4);
   enemyMouseMixer = new THREE.AnimationMixer(enemyMouse);
   enemyMouseMoveAnimation = enemyMouseMixer.clipAction(enemyMouseGltf.animations[0]);
   enemyMouseMoveAnimation.play();
 
-  const enemyCockroachGltf = await loader.loadAsync('./public/models/cockroach_minecraft.glb');
+  const enemyCockroachGltf = await loader.loadAsync('models/cockroach_minecraft.glb');
   enemyCockroach = enemyCockroachGltf.scene.getObjectByName(enemyCockroachGltf.scene.name) as THREE.Mesh;
   enemyCockroach.scale.set(3, 3, 3);
   enemyCockroachMixer = new THREE.AnimationMixer(enemyCockroach);
   enemyCockroachMoveAnimation = enemyCockroachMixer.clipAction(enemyCockroachGltf.animations[0]);
   enemyCockroachMoveAnimation.play();
 
-  const weaponBananaKatanaGltf = await loader.loadAsync('./public/models/batana.glb');
+  const weaponBananaKatanaGltf = await loader.loadAsync('models/batana.glb');
   weaponBananaKatana = weaponBananaKatanaGltf.scene.getObjectByName(weaponBananaKatanaGltf.scene.name) as THREE.Mesh;
   weaponBananaKatana.position.set(CHARACTER_SPAWN_LOCATION.x,
     CHARACTER_SPAWN_LOCATION.y,
@@ -369,11 +369,11 @@ async function init() {
   weaponBananaKatanaCollision = new THREE.Box3();
   weaponBananaKatanaCollision.setFromObject(weaponBananaKatana);
 
-  // const weaponBananaGunGltf = await loader.loadAsync('./public/models/banana_pistol.glb');
+  // const weaponBananaGunGltf = await loader.loadAsync('models/banana_pistol.glb');
   // weaponBananaGun = weaponBananaGunGltf.scene;
-  // const weaponBananaGunAmmoGltf = await loader.loadAsync('./public/models/banana.glb');
+  // const weaponBananaGunAmmoGltf = await loader.loadAsync('models/banana.glb');
   // weaponBananaGunAmmo = weaponBananaGunAmmoGltf.scene;
-  // const weaponBananaBombGltf = await loader.loadAsync('./public/models/banana_peel_mario_kart.glb');
+  // const weaponBananaBombGltf = await loader.loadAsync('pmmodels/banana_peel_mario_kart.glb');
   // weaponBananaBomb = weaponBananaBombGltf.scene;
 
   // #endregion
@@ -421,25 +421,25 @@ async function init() {
   survivalSound = new THREE.Audio(listener);
   hitSound = new THREE.Audio(listener);
 
-  audioLoader.load("./public/sounds/BGM.ogg", function (buffer) {
+  audioLoader.load("sounds/BGM.ogg", function (buffer) {
     bgmSound.setBuffer(buffer);
     bgmSound.setLoop(true);
     bgmSound.setVolume(0.2);
   });
 
-  audioLoader.load("./public/sounds/lose.ogg", function (buffer) {
+  audioLoader.load("sounds/lose.ogg", function (buffer) {
     loseSound.setBuffer(buffer);
     loseSound.setLoop(false);
     loseSound.setVolume(.5);
   });
 
-  audioLoader.load("./public/sounds/survival.ogg", function (buffer) {
+  audioLoader.load("sounds/survival.ogg", function (buffer) {
     survivalSound.setBuffer(buffer);
     survivalSound.setLoop(true);
     survivalSound.setVolume(.25);
   });
 
-  audioLoader.load("./public/sounds/hit.ogg", function (buffer) {
+  audioLoader.load("sounds/hit.ogg", function (buffer) {
     hitSound.setBuffer(buffer);
     hitSound.setLoop(false);
     hitSound.setVolume(.25);
