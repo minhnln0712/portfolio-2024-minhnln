@@ -3,6 +3,7 @@ import * as THREE from "three";
 import Stats from "three/addons/libs/stats.module.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { TrackballControls } from "three/addons/controls/TrackballControls.js";
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
@@ -10,17 +11,18 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 // Initialization
 let stats: Stats;
-let scene: THREE.Scene;
 const clock = new THREE.Clock();
 let deltaTime: number;
-let bIsTriggerSurvivalMode: boolean;
+let bIsTriggerSurvivalMode = false;
+let bIsInitSurvivalMode = false;
+let bIsAccessPortfolio = false;
 
 // Camera
 let renderer: THREE.WebGLRenderer;
 let camera: THREE.PerspectiveCamera;
 const CAMERA_DEFAULT_POSITION = new THREE.Vector3(-10, 10, 0);
-const CAMERA_MAX_POSITION = new THREE.Vector3(-20, 20, 0);
-const CAMERA_MIN_POSITION = new THREE.Vector3(-5, 5, 0);
+let cameraControl: OrbitControls;
+let cameraControl2: TrackballControls;
 let renderScene: RenderPass;
 let bloomPass: UnrealBloomPass;
 let composer: EffectComposer;
@@ -33,7 +35,7 @@ const CHARACTER_MOVE_SPEED: number = 10;
 const CHARACTER_HEALTH_POINT: number = 100;
 let characterHP = 100;
 let bIsCharacterDead = false;
-const CHARACTER_SPAWN_LOCATION = new THREE.Vector3(-40, 0, -30);
+const CHARACTER_SPAWN_LOCATION = new THREE.Vector3(13, 0, 12);
 
 let character: THREE.Mesh;
 let characterMixer: THREE.AnimationMixer;
@@ -46,28 +48,68 @@ let menuPlane: THREE.Mesh;
 let mainPlane: THREE.Mesh;
 let gamePlane: THREE.Mesh;
 
+let portfolioModel: THREE.Object3D;
+
 let enemyMouse: THREE.Mesh;
 let enemyMouseMixer: THREE.AnimationMixer;
 let enemyMouseMoveAnimation: THREE.AnimationAction;
-let enemyMouseCollision: THREE.Box3;
 let enemyCockroach: THREE.Mesh;
 let enemyCockroachMixer: THREE.AnimationMixer;
 let enemyCockroachMoveAnimation: THREE.AnimationAction;
-let enemyCockroachCollision: THREE.Box3;
 
 let weaponBananaKatana: THREE.Mesh;
 let weaponBananaKatanaCollision: THREE.Box3;
-let weaponBananaGun: THREE.Mesh;
-let weaponBananaGunAmmo: THREE.Mesh;
-let weaponBananaGunAmmoCollision: THREE.Box3;
-let weaponBananaBomb: THREE.Mesh;
-let weaponBananaBombCollision: THREE.Box3;
+
+let redButton: THREE.Mesh;
+let redButtonCollision: THREE.Box3;
+
+// Sound
+let listener: THREE.AudioListener;
+
+let bgmSound: THREE.Audio;
+let loseSound: THREE.Audio;
+let survivalSound: THREE.Audio;
+let hitSound: THREE.Audio;
 
 // Light
 
 const DIRECTIONAL_LIGHT_SPAWN_LOCATION = new THREE.Vector3(CHARACTER_SPAWN_LOCATION.x - 20, 20, CHARACTER_SPAWN_LOCATION.z - 20);
 let directionalLight: THREE.DirectionalLight;
 
+// Assets
+const progressBar = document.getElementById("progress-bar") as HTMLProgressElement;
+
+const startButton = document.getElementById("startBtn") as HTMLButtonElement;
+
+const loadingManager = new THREE.LoadingManager();
+
+let numOfAssetsLoaded = 0;
+const TOTAL_NUMBER_OF_ASSETS = 23;
+
+loadingManager.onProgress = (url, loaded, total) => {
+  numOfAssetsLoaded = loaded;
+  progressBar.value = (loaded / TOTAL_NUMBER_OF_ASSETS) * 100;
+}
+
+const progressBarContainer = document.querySelector('.progress-bar-container') as HTMLDivElement;
+loadingManager.onLoad = () => {
+  if (numOfAssetsLoaded === TOTAL_NUMBER_OF_ASSETS) {
+    progressBar.style.display = "none";
+    startButton.style.display = 'block';
+
+  }
+}
+
+startButton.addEventListener('click', () => {
+  bIsAccessPortfolio = true;
+  startButton.style.display = 'none';
+  progressBarContainer.style.display = "none";
+  bgmSound.play();
+})
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+scene.castShadow = true;
 
 init();
 
@@ -78,9 +120,7 @@ async function init() {
 
   // #region Scene Init
 
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x000000);
-  scene.castShadow = true;
+
 
   // #endregion
 
@@ -92,7 +132,10 @@ async function init() {
     0.1,
     1000
   );
-
+  // camera.rotation.set(
+  //   CAMERA_BASE_ROTATION.x,
+  //   CAMERA_BASE_ROTATION.y,
+  //   CAMERA_BASE_ROTATION.z);
   camera.position.set(
     CAMERA_DEFAULT_POSITION.x + CHARACTER_SPAWN_LOCATION.x,
     CAMERA_DEFAULT_POSITION.y + CHARACTER_SPAWN_LOCATION.y,
@@ -109,7 +152,6 @@ async function init() {
   renderer.shadowMap.enabled = true;
   renderer.setClearColor(0x000000, 0);
   renderer.toneMapping = THREE.ReinhardToneMapping;
-
   document.body.appendChild(renderer.domElement);
 
   // Bloom Effect
@@ -137,12 +179,29 @@ async function init() {
     render();
   });
 
+  // cameraControl = new OrbitControls(camera, renderer.domElement);
+  // cameraControl.enableDamping = true;
+  // cameraControl.dampingFactor = 0.1;
+  // cameraControl.enableZoom = false;
+  // cameraControl.enableRotate = false;
+  // cameraControl.enablePan = false;
+
+  cameraControl2 = new TrackballControls(camera, renderer.domElement)
+  cameraControl2.noPan = true;
+  cameraControl2.noRotate = true;
+  cameraControl2.noRoll = true;
+  cameraControl2.noZoom = false;
+  cameraControl2.zoomSpeed = 1.5;
+  cameraControl2.noZoom = false;
+  cameraControl2.minDistance = 5;
+  cameraControl2.maxDistance = 30;
+
   // #endregion
 
   // #region Light Init
 
   // directionalLight = new THREE.DirectionalLight(0x3d77a6, 1);
-  directionalLight = new THREE.DirectionalLight(0xffffff, 3);
+  directionalLight = new THREE.DirectionalLight(0xffffff, 1);
   directionalLight.visible = true;
   directionalLight.position.set(
     DIRECTIONAL_LIGHT_SPAWN_LOCATION.x,
@@ -156,6 +215,7 @@ async function init() {
   directionalLight.shadow.camera.bottom = -100;
   directionalLight.shadow.mapSize = new THREE.Vector2(8192, 8192);
   directionalLight.castShadow = true;
+  directionalLight.shadow.bias = -0.0001;
   scene.add(directionalLight);
 
   // const helper = new THREE.CameraHelper(directionalLight.shadow.camera);
@@ -164,7 +224,7 @@ async function init() {
   // #endregion
 
   // Model
-  const loader = new GLTFLoader();
+  const loader = new GLTFLoader(loadingManager);
 
   // #region Character Init
 
@@ -186,8 +246,13 @@ async function init() {
   });
 
   scene.add(character);
-  camera.lookAt(character.position);
+
   directionalLight.target = character;
+  characterCollision = new THREE.Box3().setFromObject(character);
+  // camera.lookAt(character.position)
+
+
+
 
   // #endregion
 
@@ -217,7 +282,7 @@ async function init() {
     }, {
       name: "Portfolio_16", emissiveColor: "#FF0000", emissiveIntensity: 1, side: THREE.FrontSide
     }, {
-      name: "Portfolio_17", emissiveColor: "#730901", emissiveIntensity: 1, side: THREE.FrontSide
+      name: "Portfolio_17", emissiveColor: "#730f01", emissiveIntensity: 4, side: THREE.FrontSide
     }, {
       name: "Portfolio_18", emissiveColor: "#ffff00", emissiveIntensity: 1, side: THREE.FrontSide
     }, {
@@ -247,7 +312,7 @@ async function init() {
   ];
 
   const portfolioGltf = await loader.loadAsync('/public/models/PortfolioMesh.glb');
-  const portfolioModel = portfolioGltf.scene;
+  portfolioModel = portfolioGltf.scene;
 
   // (portfolioModel.getObjectByName("Portfolio_5") as THREE.Mesh).material =
   //   new THREE.MeshStandardMaterial({ emissive: 0xfdda0d, side: THREE.BackSide, emissiveIntensity: .1 });
@@ -270,8 +335,16 @@ async function init() {
   portfolioModel.rotateY(-0.75 * Math.PI);
   scene.add(portfolioModel);
 
-  // Enemy Model
+  const redButtonGltf = await loader.loadAsync('/public/models/red_button.glb');
+  redButton = redButtonGltf.scene.getObjectByName(redButtonGltf.scene.name) as THREE.Mesh;
+  redButton.position.set(28, 1, -25.5);
+  redButton.rotateY(.25 * Math.PI);
+  redButton.scale.set(5, 5, 5);
+  redButtonCollision = new THREE.Box3().setFromObject(redButton);
+  scene.add(redButton);
 
+
+  // Enemy Model
 
   const enemyMouseGltf = await loader.loadAsync('/public/models/mouse (1).glb');
   enemyMouse = enemyMouseGltf.scene.getObjectByName(enemyMouseGltf.scene.name) as THREE.Mesh;
@@ -287,10 +360,6 @@ async function init() {
   enemyCockroachMoveAnimation = enemyCockroachMixer.clipAction(enemyCockroachGltf.animations[0]);
   enemyCockroachMoveAnimation.play();
 
-
-
-
-
   const weaponBananaKatanaGltf = await loader.loadAsync('/public/models/batana.glb');
   weaponBananaKatana = weaponBananaKatanaGltf.scene.getObjectByName(weaponBananaKatanaGltf.scene.name) as THREE.Mesh;
   weaponBananaKatana.position.set(CHARACTER_SPAWN_LOCATION.x,
@@ -298,19 +367,6 @@ async function init() {
     CHARACTER_SPAWN_LOCATION.z);
   weaponBananaKatanaCollision = new THREE.Box3();
   weaponBananaKatanaCollision.setFromObject(weaponBananaKatana);
-  const helper = new THREE.Box3Helper(weaponBananaKatanaCollision, 0xffff00);
-  helper.updateMatrixWorld(true)
-  scene.add(helper);
-  scene.add(weaponBananaKatana);
-
-  character.frustumCulled = false;
-  weaponBananaKatana.frustumCulled = false;
-
-  characterCollision = new THREE.Box3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(1, 1, 1));
-  const helper2 = new THREE.Box3Helper(characterCollision, 0xff0000);
-  helper2.updateMatrixWorld(true)
-  scene.add(helper2);
-
 
   // const weaponBananaGunGltf = await loader.loadAsync('/public/models/banana_pistol.glb');
   // weaponBananaGun = weaponBananaGunGltf.scene;
@@ -326,13 +382,13 @@ async function init() {
   // Add a Plane for the surface
   menuPlane = new THREE.Mesh(
     new THREE.PlaneGeometry(1000, 1000, 1, 1),
-    new THREE.MeshStandardMaterial({ color: 0xfdda0d })
+    new THREE.MeshStandardMaterial({ color: 0x0080bf })
   );
   menuPlane.rotateX(-Math.PI / 2);
-  // menuPlane.position.y = -1;
+  menuPlane.position.y = 9;
   menuPlane.receiveShadow = true;
   menuPlane.castShadow = true;
-  // scene.add(menuPlane);
+  scene.add(menuPlane);
 
   mainPlane = new THREE.Mesh(
     new THREE.PlaneGeometry(1000, 1000, 1, 1),
@@ -353,27 +409,50 @@ async function init() {
   // scene.add(gamePlane);
 
   // #endregion
+
+  // #region Sound
+
+  const audioLoader = new THREE.AudioLoader(loadingManager);
+  listener = new THREE.AudioListener();
+  camera.add(listener);
+  bgmSound = new THREE.Audio(listener);
+  loseSound = new THREE.Audio(listener);
+  survivalSound = new THREE.Audio(listener);
+  hitSound = new THREE.Audio(listener);
+
+  audioLoader.load("/public/sounds/BGM.ogg", function (buffer) {
+    bgmSound.setBuffer(buffer);
+    bgmSound.setLoop(true);
+    bgmSound.setVolume(0.2);
+  });
+
+  audioLoader.load("/public/sounds/lose.ogg", function (buffer) {
+    loseSound.setBuffer(buffer);
+    loseSound.setLoop(false);
+    loseSound.setVolume(.5);
+  });
+
+  audioLoader.load("/public/sounds/survival.ogg", function (buffer) {
+    survivalSound.setBuffer(buffer);
+    survivalSound.setLoop(true);
+    survivalSound.setVolume(.25);
+  });
+
+  audioLoader.load("/public/sounds/hit.ogg", function (buffer) {
+    hitSound.setBuffer(buffer);
+    hitSound.setLoop(false);
+    hitSound.setVolume(.25);
+  });
+
+  // #endregion
+
+
   EventTick();
 }
 
 function render() {
   composer.render();
 }
-
-// #region Sound
-
-// const listener = new THREE.AudioListener();
-// camera.add(listener);
-// const sound = new THREE.Audio(listener);
-// const audioLoader = new THREE.AudioLoader();
-// audioLoader.load("/public/sounds/BGM.ogg", function (buffer) {
-//   sound.setBuffer(buffer);
-//   sound.setLoop(true);
-//   sound.setVolume(0.2);
-//   sound.play();
-// });
-
-// #endregion
 
 // #region Character
 
@@ -415,24 +494,23 @@ const onDocumentKey = (e: KeyboardEvent) => {
 document.addEventListener("keydown", onDocumentKey);
 document.addEventListener("keyup", onDocumentKey);
 
-document.addEventListener("wheel", (e) => {
-  if (e.deltaY < 0) {
-    if ((camera.position.y < CAMERA_MAX_POSITION.y &&
-      camera.position.y > CAMERA_MIN_POSITION.y) ||
-      camera.position.y === CAMERA_MAX_POSITION.y) {
-      camera.position.x += 1;
-      camera.position.y -= 1;
-    }
-  } else {
-    if ((camera.position.y < CAMERA_MAX_POSITION.y &&
-      camera.position.y > CAMERA_MIN_POSITION.y) ||
-      camera.position.y === CAMERA_MIN_POSITION.y) {
-      camera.position.x -= 1;
-      camera.position.y += 1;
-    }
-  }
-
-});
+// document.addEventListener("wheel", (e) => {
+//   if (e.deltaY < 0) {
+//     if ((camera.position.y < CAMERA_MAX_POSITION.y &&
+//       camera.position.y > CAMERA_MIN_POSITION.y) ||
+//       camera.position.y === CAMERA_MAX_POSITION.y) {
+//       camera.position.x += 1;
+//       camera.position.y -= 1;
+//     }
+//   } else {
+//     if ((camera.position.y < CAMERA_MAX_POSITION.y &&
+//       camera.position.y > CAMERA_MIN_POSITION.y) ||
+//       camera.position.y === CAMERA_MIN_POSITION.y) {
+//       camera.position.x -= 1;
+//       camera.position.y += 1;
+//     }
+//   }  
+// });
 
 // #endregion
 
@@ -454,7 +532,7 @@ function RandomNumber(min: number, max: number) {
 }
 
 function spawnEnemy(minRange: number, maxRange: number, movementSpeed: number) {
-
+  if (EnemyList.length > 50) return;
   const randomEnemy = RandomNumber(0, 1);
   const enemy = randomEnemy ? enemyMouse.clone() : enemyCockroach.clone();
   const rotateOffset = randomEnemy ? .5 * Math.PI : Math.PI;
@@ -476,24 +554,39 @@ function spawnEnemy(minRange: number, maxRange: number, movementSpeed: number) {
 
 //#endregion
 
-// new OrbitControls(camera, renderer.domElement);
-
 function EventTick() {
   requestAnimationFrame(EventTick);
-  if (characterHP <= 0) bIsCharacterDead = true;
+  if (characterHP <= 0) {
+    bIsCharacterDead = true;
+    if (survivalSound.isPlaying) survivalSound.stop();
+    if (!loseSound.isPlaying) loseSound.play();
+  }
   if (keyMap["KeyR"] && bIsCharacterDead) resetTheGame();
   if (!bIsCharacterDead) {
+    // cameraControl.target.set(character.position.x, character.position.y, character.position.z);
+    // cameraControl.update();
+    cameraControl2.target.set(character.position.x, character.position.y, character.position.z);
+    cameraControl2.update();
     deltaTime = clock.getDelta();
+
+    if (bIsAccessPortfolio) accessPortfolio(deltaTime);
+
     characterMixer.update(deltaTime);
-    camera.lookAt(character.position);
     if (bIsTriggerSurvivalMode) {
-      enemyMouseMixer.update(deltaTime);
-      enemyCockroachMixer.update(deltaTime);
-      enemyCockroachMoveAnimation.play();
-      weaponBananaKatana.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), .5)
-      weaponBananaKatanaCollision.setFromObject(weaponBananaKatana, true);
+      if (bIsInitSurvivalMode) {
+        RunSurvivalMode(deltaTime);
+      } else {
+        enemyMouseMixer.update(deltaTime);
+        enemyCockroachMixer.update(deltaTime);
+        enemyCockroachMoveAnimation.play();
+        weaponBananaKatana.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), .5)
+        weaponBananaKatanaCollision.setFromObject(weaponBananaKatana, true);
+      }
     }
     characterCollision.setFromObject(character, true);
+    if (!bIsTriggerSurvivalMode && characterCollision.intersectsBox(redButtonCollision)) {
+      RunSurvivalMode(0);
+    }
     // if (runCodeEachSeconds(clock.getElapsedTime(), 3)) {
     //   // console.log("hiii");
     //   // spawnEnemy(0, 20);
@@ -524,44 +617,42 @@ function EventTick() {
     });
 
     // #region Movement and Controls
-    if (keyMap["KeyW"]) {
-      CharacterMoveUp(CHARACTER_MOVE_SPEED);
-      character.rotation.y = 0.5 * Math.PI;
-    }
-    if (keyMap["KeyS"]) {
-      CharacterMoveUp(-CHARACTER_MOVE_SPEED);
-      character.rotation.y = -0.5 * Math.PI;
-    }
-    if (keyMap["KeyA"]) {
-      CharacterMoveRight(-CHARACTER_MOVE_SPEED);
-      character.rotation.y = Math.PI;
-    }
-    if (keyMap["KeyD"]) {
-      CharacterMoveRight(CHARACTER_MOVE_SPEED);
-      character.rotation.y = 0;
-    }
-    if (keyMap["KeyW"] && keyMap["KeyD"]) {
-      character.rotation.y = 0.25 * Math.PI;
-    }
-    if (keyMap["KeyS"] && keyMap["KeyD"]) {
-      character.rotation.y = -0.25 * Math.PI;
-    }
-    if (keyMap["KeyW"] && keyMap["KeyA"]) {
-      character.rotation.y = 0.75 * Math.PI;
-    }
-    if (keyMap["KeyS"] && keyMap["KeyA"]) {
-      character.rotation.y = -0.75 * Math.PI;
-    }
-    if (
-      (keyMap["KeyW"] && keyMap["KeyS"]) ||
-      (keyMap["KeyA"] && keyMap["KeyD"])
-    ) {
-      characterMoveAnimation.stop();
-      characterIdleAnimation.play();
-    }
-    if (keyMap["KeyZ"]) {
-      // spawnEnemy(10, 50, 5);
-      // played = true;
+    if (!bIsInitSurvivalMode && !bIsAccessPortfolio) {
+      if (keyMap["KeyW"]) {
+        CharacterMoveUp(CHARACTER_MOVE_SPEED);
+        character.rotation.y = 0.5 * Math.PI;
+      }
+      if (keyMap["KeyS"]) {
+        CharacterMoveUp(-CHARACTER_MOVE_SPEED);
+        character.rotation.y = -0.5 * Math.PI;
+      }
+      if (keyMap["KeyA"]) {
+        CharacterMoveRight(-CHARACTER_MOVE_SPEED);
+        character.rotation.y = Math.PI;
+      }
+      if (keyMap["KeyD"]) {
+        CharacterMoveRight(CHARACTER_MOVE_SPEED);
+        character.rotation.y = 0;
+      }
+      if (keyMap["KeyW"] && keyMap["KeyD"]) {
+        character.rotation.y = 0.25 * Math.PI;
+      }
+      if (keyMap["KeyS"] && keyMap["KeyD"]) {
+        character.rotation.y = -0.25 * Math.PI;
+      }
+      if (keyMap["KeyW"] && keyMap["KeyA"]) {
+        character.rotation.y = 0.75 * Math.PI;
+      }
+      if (keyMap["KeyS"] && keyMap["KeyA"]) {
+        character.rotation.y = -0.75 * Math.PI;
+      }
+      if (
+        (keyMap["KeyW"] && keyMap["KeyS"]) ||
+        (keyMap["KeyA"] && keyMap["KeyD"])
+      ) {
+        characterMoveAnimation.stop();
+        characterIdleAnimation.play();
+      }
     }
 
     if (
@@ -587,29 +678,76 @@ function EventTick() {
 }
 
 function resetTheGame() {
-  characterHP = CHARACTER_HEALTH_POINT;
-  character.position.set(CHARACTER_SPAWN_LOCATION.x,
-    CHARACTER_SPAWN_LOCATION.y,
-    CHARACTER_SPAWN_LOCATION.z);
-  camera.position.set(
-    CAMERA_DEFAULT_POSITION.x + CHARACTER_SPAWN_LOCATION.x,
-    CAMERA_DEFAULT_POSITION.y + CHARACTER_SPAWN_LOCATION.y,
-    CAMERA_DEFAULT_POSITION.z + CHARACTER_SPAWN_LOCATION.z
-  );
-  directionalLight.position.set(
-    DIRECTIONAL_LIGHT_SPAWN_LOCATION.x,
-    DIRECTIONAL_LIGHT_SPAWN_LOCATION.y,
-    DIRECTIONAL_LIGHT_SPAWN_LOCATION.z);
-  weaponBananaKatana.position.set(
-    CHARACTER_SPAWN_LOCATION.x,
-    CHARACTER_SPAWN_LOCATION.y,
-    CHARACTER_SPAWN_LOCATION.z);
-  EnemyList.forEach((enemy) => {
-    scene.remove(enemy.mesh);
-    EnemyList.splice(EnemyList.indexOf(enemy), 1);
-    if (EnemyList.length === 0) {
-      bIsCharacterDead = false;
-      bIsTriggerSurvivalMode = false;
+  // characterHP = CHARACTER_HEALTH_POINT;
+  // character.position.set(CHARACTER_SPAWN_LOCATION.x,
+  //   CHARACTER_SPAWN_LOCATION.y,
+  //   CHARACTER_SPAWN_LOCATION.z);
+  // camera.position.set(
+  //   CAMERA_DEFAULT_POSITION.x + CHARACTER_SPAWN_LOCATION.x,
+  //   CAMERA_DEFAULT_POSITION.y + CHARACTER_SPAWN_LOCATION.y,
+  //   CAMERA_DEFAULT_POSITION.z + CHARACTER_SPAWN_LOCATION.z
+  // );
+  // directionalLight.position.set(
+  //   DIRECTIONAL_LIGHT_SPAWN_LOCATION.x,
+  //   DIRECTIONAL_LIGHT_SPAWN_LOCATION.y,
+  //   DIRECTIONAL_LIGHT_SPAWN_LOCATION.z);
+  // weaponBananaKatana.position.set(
+  //   CHARACTER_SPAWN_LOCATION.x,
+  //   CHARACTER_SPAWN_LOCATION.y,
+  //   CHARACTER_SPAWN_LOCATION.z);
+  // EnemyList.forEach((enemy) => {
+  //   scene.remove(enemy.mesh);
+  //   EnemyList.splice(EnemyList.indexOf(enemy), 1);
+  //   if (EnemyList.length === 0) {
+  //     bIsCharacterDead = false;
+  //     bIsTriggerSurvivalMode = false;
+  //   }
+  // });
+  location.reload();
+}
+
+function RunSurvivalMode(deltaTime: number) {
+  bIsInitSurvivalMode = true;
+  bIsTriggerSurvivalMode = true;
+  if (bgmSound.isPlaying) bgmSound.stop();
+  if (!survivalSound.isPlaying) survivalSound.play();
+  if (portfolioModel.position.y > -19.9) {
+    portfolioModel.position.y -= deltaTime * 3;
+    redButton.position.y -= deltaTime * 3;
+    if (cameraControl2.minDistance < cameraControl2.maxDistance) {
+      cameraControl2.minDistance += deltaTime * 3
     }
-  });
+    if (directionalLight.intensity < 5)
+      directionalLight.intensity += deltaTime / 2;
+  } else {
+
+    bIsInitSurvivalMode = false;
+    redButtonCollision.makeEmpty;
+    scene.add(weaponBananaKatana);
+    for (let i = 0; i < 10; i++) {
+      setInterval(() => {
+        spawnEnemy(50, 100, 10);
+      }, 3000)
+    }
+  }
+}
+
+function accessPortfolio(deltaTime: number) {
+  // if (cameraControl2.maxDistance > 15) {
+  //   console.log(cameraControl2.minDistance);
+  //   if (cameraControl2.minDistance > 5)
+  //     cameraControl2.minDistance -= (deltaTime * 10); // reduce by lerp
+  //   cameraControl2.maxDistance -= (deltaTime * 5);
+  // } else {
+  //   if (menuPlane.position.y < -0.9) {
+  //     cameraControl2.minDistance = 5
+  //     cameraControl2.maxDistance = 30;
+  //     bIsAccessPortfolio = false;
+  //   }
+  // }
+  // 
+
+  if (menuPlane.position.y < -0.9) {
+    bIsAccessPortfolio = false;
+  } else { menuPlane.position.y -= deltaTime * 5; }
 }
