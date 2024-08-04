@@ -267,7 +267,7 @@ async function init() {
   menuPlane.receiveShadow = true;
   menuPlane.castShadow = true;
   scene.add(menuPlane);
-  const mainPlaneTexture = await textureLoader.loadAsync('/public/images/BlankBG.png')
+  const mainPlaneTexture = await textureLoader.loadAsync('images/BlankBG.png')
   mainPlaneTexture.mapping = THREE.EquirectangularReflectionMapping;
   mainPlane = new THREE.Mesh(
     new THREE.PlaneGeometry(1000, 1000, 1, 1),
@@ -303,7 +303,7 @@ async function init() {
       node.receiveShadow = true;
     }
   });
-  const portfolioTexture = await textureLoader.loadAsync('/public/images/2024-Portfolio.png')
+  const portfolioTexture = await textureLoader.loadAsync('images/2024-Portfolio.png')
   portfolioTexture.mapping = THREE.EquirectangularReflectionMapping;
   portfolioTexture.flipY = false;
   const portfolioPlane = portfolioModel.children[0].children[37] as THREE.Mesh;
@@ -319,7 +319,7 @@ async function init() {
   Information_Linkedin_Button.position.set(0, 0.25, 0)// Linkedin
 
 
-  const redButtonGltf = await loader.loadAsync('/public/models/red_button.glb');
+  const redButtonGltf = await loader.loadAsync('models/red_button.glb');
   redButton = redButtonGltf.scene.getObjectByName(redButtonGltf.scene.name) as THREE.Mesh;
   redButton.position.set(-24, 0, -28.5)
   redButton.scale.set(4, 4, 4)
