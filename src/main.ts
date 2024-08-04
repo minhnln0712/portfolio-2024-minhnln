@@ -20,7 +20,8 @@ let bIsAccessPortfolio = false;
 // Camera
 let renderer: THREE.WebGLRenderer;
 let camera: THREE.PerspectiveCamera;
-const CAMERA_DEFAULT_POSITION = new THREE.Vector3(-10, 10, 0);
+const CAMERA_DEFAULT_POSITION = new THREE.Vector3(0, 10, 10);
+// const CAMERA_DEFAULT_POSITION = new THREE.Vector3(-10, 10, 0);
 // let cameraControl: OrbitControls;
 let cameraControl2: TrackballControls;
 let renderScene: RenderPass;
@@ -35,7 +36,7 @@ const CHARACTER_MOVE_SPEED: number = 10;
 // const CHARACTER_HEALTH_POINT: number = 100;
 let characterHP = 100;
 let bIsCharacterDead = false;
-const CHARACTER_SPAWN_LOCATION = new THREE.Vector3(13, 0, 12);
+const CHARACTER_SPAWN_LOCATION = new THREE.Vector3(22, 0, -19);
 
 let character: THREE.Mesh;
 let characterMixer: THREE.AnimationMixer;
@@ -48,7 +49,6 @@ let menuPlane: THREE.Mesh;
 let mainPlane: THREE.Mesh;
 let gamePlane: THREE.Mesh;
 
-let portfolioModel: THREE.Object3D;
 
 let enemyMouse: THREE.Mesh;
 let enemyMouseMixer: THREE.AnimationMixer;
@@ -60,8 +60,20 @@ let enemyCockroachMoveAnimation: THREE.AnimationAction;
 let weaponBananaKatana: THREE.Mesh;
 let weaponBananaKatanaCollision: THREE.Box3;
 
+
+// Interacting Portfolio Model
+let portfolioModel: THREE.Mesh;
 let redButton: THREE.Mesh;
 let redButtonCollision: THREE.Box3;
+let Information_Facebook_Button: THREE.Mesh;
+let Information_Facebook_Button_Collision: THREE.Box3;
+let Information_Github_Button: THREE.Mesh;
+let Information_Github_Button_Collision: THREE.Box3;
+let Information_Gmail_Button: THREE.Mesh;
+let Information_Gmail_Button_Collision: THREE.Box3;
+let Information_Linkedin_Button: THREE.Mesh;
+let Information_Linkedin_Button_Collision: THREE.Box3;
+
 
 // Sound
 let listener: THREE.AudioListener;
@@ -73,7 +85,7 @@ let hitSound: THREE.Audio;
 
 // Light
 
-const DIRECTIONAL_LIGHT_SPAWN_LOCATION = new THREE.Vector3(CHARACTER_SPAWN_LOCATION.x - 20, 20, CHARACTER_SPAWN_LOCATION.z - 20);
+const DIRECTIONAL_LIGHT_SPAWN_LOCATION = new THREE.Vector3(CHARACTER_SPAWN_LOCATION.x - 20, 20, CHARACTER_SPAWN_LOCATION.z + 20);
 let directionalLight: THREE.DirectionalLight;
 
 // Assets
@@ -84,7 +96,7 @@ const startButton = document.getElementById("startBtn") as HTMLButtonElement;
 const loadingManager = new THREE.LoadingManager();
 
 let numOfAssetsLoaded = 0;
-const TOTAL_NUMBER_OF_ASSETS = 23;
+const TOTAL_NUMBER_OF_ASSETS = 50;
 
 loadingManager.onProgress = (url, loaded, total) => {
   console.log(url + total);
@@ -94,10 +106,10 @@ loadingManager.onProgress = (url, loaded, total) => {
 
 const progressBarContainer = document.querySelector('.progress-bar-container') as HTMLDivElement;
 loadingManager.onLoad = () => {
-  if (numOfAssetsLoaded === TOTAL_NUMBER_OF_ASSETS) {
+  // NOTE: Sua cho nay sau
+  if (numOfAssetsLoaded >= TOTAL_NUMBER_OF_ASSETS) {
     progressBar.style.display = "none";
     startButton.style.display = 'block';
-
   }
 }
 
@@ -117,13 +129,7 @@ init();
 async function init() {
   // Check application stats
   stats = new Stats();
-  document.body.appendChild(stats.dom);
-
-  // #region Scene Init
-
-
-
-  // #endregion
+  // document.body.appendChild(stats.dom);
 
   // #region Camera Init
 
@@ -133,10 +139,6 @@ async function init() {
     0.1,
     1000
   );
-  // camera.rotation.set(
-  //   CAMERA_BASE_ROTATION.x,
-  //   CAMERA_BASE_ROTATION.y,
-  //   CAMERA_BASE_ROTATION.z);
   camera.position.set(
     CAMERA_DEFAULT_POSITION.x + CHARACTER_SPAWN_LOCATION.x,
     CAMERA_DEFAULT_POSITION.y + CHARACTER_SPAWN_LOCATION.y,
@@ -192,16 +194,18 @@ async function init() {
   cameraControl2.noRotate = true;
   cameraControl2.noRoll = true;
   cameraControl2.noZoom = false;
-  cameraControl2.zoomSpeed = 1.5;
-  cameraControl2.noZoom = false;
-  cameraControl2.minDistance = 5;
-  cameraControl2.maxDistance = 30;
+  cameraControl2.zoomSpeed = .5;
+  cameraControl2.minDistance = 7;
+  cameraControl2.maxDistance = 20;
 
   // #endregion
 
   // #region Light Init
 
-  // directionalLight = new THREE.DirectionalLight(0x3d77a6, 1);
+  const ambientLight = new THREE.AmbientLight(0x3d77a6, 1);
+  scene.add(ambientLight)
+
+
   directionalLight = new THREE.DirectionalLight(0xffffff, 1);
   directionalLight.visible = true;
   directionalLight.position.set(
@@ -219,13 +223,11 @@ async function init() {
   directionalLight.shadow.bias = -0.0001;
   scene.add(directionalLight);
 
-  // const helper = new THREE.CameraHelper(directionalLight.shadow.camera);
-  // scene.add(helper);
-
   // #endregion
 
   // Model
   const loader = new GLTFLoader(loadingManager);
+  const textureLoader = new THREE.TextureLoader(loadingManager);
 
   // #region Character Init
 
@@ -238,7 +240,7 @@ async function init() {
     CHARACTER_SPAWN_LOCATION.y,
     CHARACTER_SPAWN_LOCATION.z);
 
-  character.rotation.y = -0.75 * Math.PI;
+  character.rotation.y = -0.25 * Math.PI;
   character.traverse((node) => {
     if ((node as THREE.Mesh).isMesh) {
       node.castShadow = true;
@@ -250,100 +252,83 @@ async function init() {
 
   directionalLight.target = character;
   characterCollision = new THREE.Box3().setFromObject(character);
-  // camera.lookAt(character.position)
 
+  // #endregion
 
+  // #region Main Surface
 
+  // Add a Plane for the surface
+  menuPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(1000, 1000, 1, 1),
+    new THREE.MeshStandardMaterial({ color: 0x37c6ff })
+  );
+  menuPlane.rotateX(-Math.PI / 2);
+  menuPlane.position.y = 9;
+  menuPlane.receiveShadow = true;
+  menuPlane.castShadow = true;
+  scene.add(menuPlane);
+  const mainPlaneTexture = await textureLoader.loadAsync('/public/images/BlankBG.png')
+  mainPlaneTexture.mapping = THREE.EquirectangularReflectionMapping;
+  mainPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(1000, 1000, 1, 1),
+    new THREE.MeshStandardMaterial({ map: mainPlaneTexture })
+  );
+  mainPlane.rotateX(-Math.PI / 2);
+  mainPlane.receiveShadow = true;
+  mainPlane.castShadow = true;
+  scene.add(mainPlane);
+
+  gamePlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(1000, 1000, 1, 1),
+    new THREE.MeshStandardMaterial({ color: 0x37c6ff })
+  );
+  gamePlane.rotateX(Math.PI / 2);
+  gamePlane.receiveShadow = true;
+  gamePlane.castShadow = true;
+  // scene.add(gamePlane);
 
   // #endregion
 
   // #region Model
 
-  const EmissiveModelTextureList = [
-    {
-      name: "Portfolio_2", emissiveColor: "#FE3EA5", emissiveIntensity: 5, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_3", emissiveColor: "#FFB5DA", emissiveIntensity: 10, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_4", emissiveColor: "#FF7DD3", emissiveIntensity: 5, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_5", emissiveColor: "#6420AB", emissiveIntensity: .1, side: THREE.DoubleSide
-    }, {
-      name: "Portfolio_7", emissiveColor: "#FFFF00", emissiveIntensity: .2, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_9", emissiveColor: "#FFF800", emissiveIntensity: 1, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_10", emissiveColor: "#1877F2", emissiveIntensity: 1, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_11", emissiveColor: "#ffffff", emissiveIntensity: 1, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_12", emissiveColor: "#ffffff", emissiveIntensity: .5, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_13", emissiveColor: "#0077B5", emissiveIntensity: 1, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_16", emissiveColor: "#FF0000", emissiveIntensity: 1, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_17", emissiveColor: "#730f01", emissiveIntensity: 4, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_18", emissiveColor: "#ffff00", emissiveIntensity: 1, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_20", emissiveColor: "#009D46", emissiveIntensity: 1, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_21", emissiveColor: "#FF2B00", emissiveIntensity: 1, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_22", emissiveColor: "#FFFF00", emissiveIntensity: 1, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_23", emissiveColor: "#01224D", emissiveIntensity: 1, side: THREE.DoubleSide
-    }, {
-      name: "Portfolio_24", emissiveColor: "#9F153E", emissiveIntensity: 10, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_25", emissiveColor: "#FF204D", emissiveIntensity: 20, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_26", emissiveColor: "#5C0E40", emissiveIntensity: 10, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_27", emissiveColor: "#211952", emissiveIntensity: 1, side: THREE.DoubleSide
-    }, {
-      name: "Portfolio_28", emissiveColor: "#826FFF", emissiveIntensity: 10, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_29", emissiveColor: "#15F5B9", emissiveIntensity: 5, side: THREE.FrontSide
-    }, {
-      name: "Portfolio_42", emissiveColor: "#01224D", emissiveIntensity: 20, side: THREE.FrontSide
-    },
+  // Portfolio Model
 
-  ];
-
-  const portfolioGltf = await loader.loadAsync('models/PortfolioMesh.glb');
-  portfolioModel = portfolioGltf.scene;
-
-  // (portfolioModel.getObjectByName("Portfolio_5") as THREE.Mesh).material =
-  //   new THREE.MeshStandardMaterial({ emissive: 0xfdda0d, side: THREE.BackSide, emissiveIntensity: .1 });
-  // (portfolioModel.getObjectByName("Portfolio_42") as THREE.Mesh).material =
-  //   new THREE.MeshStandardMaterial({ color: 0xfdda0d });
-  EmissiveModelTextureList.forEach(mesh => {
-    (portfolioModel.getObjectByName(mesh.name) as THREE.Mesh).material =
-      new THREE.MeshStandardMaterial({
-        emissive: mesh.emissiveColor,
-        emissiveIntensity: mesh.emissiveIntensity,
-        side: mesh.side
-      });
-  });
+  const portfolioGltf = await loader.loadAsync('newmodels/PortfolioMesh.glb');
+  portfolioModel = portfolioGltf.scene.getObjectByName(portfolioGltf.scene.name) as THREE.Mesh;
+  portfolioModel.position.set(0, .2, 0);
+  portfolioModel.rotateY(-0.25 * Math.PI);
   portfolioModel.traverse((node) => {
     if ((node as THREE.Mesh).isMesh) {
       node.castShadow = true;
       node.receiveShadow = true;
     }
   });
-  portfolioModel.rotateY(-0.75 * Math.PI);
-  scene.add(portfolioModel);
+  const portfolioTexture = await textureLoader.loadAsync('/public/images/2024-Portfolio.png')
+  portfolioTexture.mapping = THREE.EquirectangularReflectionMapping;
+  portfolioTexture.flipY = false;
+  const portfolioPlane = portfolioModel.children[0].children[37] as THREE.Mesh;
+  portfolioPlane.material = new THREE.MeshStandardMaterial({ map: portfolioTexture });
+  portfolioModel.children[0].children[48].position.set(0, -2, 0)
+  Information_Facebook_Button = portfolioModel.children[0].children[7] as THREE.Mesh;// FB
+  Information_Facebook_Button.position.set(0, 0.25, 0)// FB
+  Information_Github_Button = portfolioModel.children[0].children[12] as THREE.Mesh; // Github
+  Information_Github_Button.position.set(0, 0.25, 0) // Github
+  Information_Gmail_Button = portfolioModel.children[0].children[23] as THREE.Mesh; // Gmail
+  Information_Gmail_Button.position.set(0, 0.25, 0)// Gmail
+  Information_Linkedin_Button = portfolioModel.children[0].children[25] as THREE.Mesh; // Linkedin
+  Information_Linkedin_Button.position.set(0, 0.25, 0)// Linkedin
 
-  const redButtonGltf = await loader.loadAsync('models/red_button.glb');
+
+  const redButtonGltf = await loader.loadAsync('/public/models/red_button.glb');
   redButton = redButtonGltf.scene.getObjectByName(redButtonGltf.scene.name) as THREE.Mesh;
-  redButton.position.set(28, 1, -25.5);
-  redButton.rotateY(.25 * Math.PI);
-  redButton.scale.set(5, 5, 5);
+  redButton.position.set(-24, 0, -28.5)
+  redButton.scale.set(4, 4, 4)
   redButtonCollision = new THREE.Box3().setFromObject(redButton);
-  scene.add(redButton);
-
+  Information_Facebook_Button_Collision = new THREE.Box3().setFromObject(Information_Facebook_Button);
+  Information_Github_Button_Collision = new THREE.Box3().setFromObject(Information_Github_Button);
+  Information_Gmail_Button_Collision = new THREE.Box3().setFromObject(Information_Gmail_Button);
+  Information_Linkedin_Button_Collision = new THREE.Box3().setFromObject(Information_Linkedin_Button);
+  scene.add(portfolioModel);
 
   // Enemy Model
 
@@ -378,39 +363,6 @@ async function init() {
 
   // #endregion
 
-  // #region Main Surface
-
-  // Add a Plane for the surface
-  menuPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(1000, 1000, 1, 1),
-    new THREE.MeshStandardMaterial({ color: 0x0080bf })
-  );
-  menuPlane.rotateX(-Math.PI / 2);
-  menuPlane.position.y = 9;
-  menuPlane.receiveShadow = true;
-  menuPlane.castShadow = true;
-  scene.add(menuPlane);
-
-  mainPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(1000, 1000, 1, 1),
-    new THREE.MeshStandardMaterial({ color: 0x0080bf })
-  );
-  mainPlane.rotateX(-Math.PI / 2);
-  mainPlane.receiveShadow = true;
-  mainPlane.castShadow = true;
-  scene.add(mainPlane);
-
-  gamePlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(1000, 1000, 1, 1),
-    new THREE.MeshStandardMaterial({ color: 0x0080bf })
-  );
-  gamePlane.rotateX(-Math.PI / 2);
-  gamePlane.receiveShadow = true;
-  gamePlane.castShadow = true;
-  // scene.add(gamePlane);
-
-  // #endregion
-
   // #region Sound
 
   const audioLoader = new THREE.AudioLoader(loadingManager);
@@ -439,11 +391,21 @@ async function init() {
     survivalSound.setVolume(.25);
   });
 
-  audioLoader.load("sounds/hit.ogg", function (buffer) {
-    hitSound.setBuffer(buffer);
-    hitSound.setLoop(false);
-    hitSound.setVolume(.25);
-  });
+  // audioLoader.load("sounds/hit.ogg", function (buffer) {
+  //   hitSound.setBuffer(buffer);
+  //   hitSound.setLoop(false);
+  //   hitSound.setVolume(.25);
+  //   const sound1 = new THREE.Audio(listener);
+  //   sound1.setBuffer(buffer);
+  //   sound1.setLoop(false);
+  //   sound1.setVolume(.25);
+  //   const sound2 = new THREE.Audio(listener);
+  //   sound2.setBuffer(buffer);
+  //   sound2.setLoop(false);
+  //   sound2.setVolume(.25);
+  //   enemyMouse.add(sound1);
+  //   enemyCockroach.add(sound2);
+  // });
 
   // #endregion
 
@@ -460,17 +422,17 @@ function render() {
 // Character Movement
 
 function CharacterMoveUp(value: number) {
-  character.position.x += deltaTime * value;
-  camera.position.x += deltaTime * value;
-  directionalLight.position.x += deltaTime * value;
-  weaponBananaKatana.position.x += deltaTime * value;
-}
-
-function CharacterMoveRight(value: number) {
   character.position.z += deltaTime * value;
   camera.position.z += deltaTime * value;
   directionalLight.position.z += deltaTime * value;
   weaponBananaKatana.position.z += deltaTime * value;
+}
+
+function CharacterMoveRight(value: number) {
+  character.position.x += deltaTime * value;
+  camera.position.x += deltaTime * value;
+  directionalLight.position.x += deltaTime * value;
+  weaponBananaKatana.position.x += deltaTime * value;
 }
 
 // Other Character Function
@@ -494,24 +456,6 @@ const onDocumentKey = (e: KeyboardEvent) => {
 };
 document.addEventListener("keydown", onDocumentKey);
 document.addEventListener("keyup", onDocumentKey);
-
-// document.addEventListener("wheel", (e) => {
-//   if (e.deltaY < 0) {
-//     if ((camera.position.y < CAMERA_MAX_POSITION.y &&
-//       camera.position.y > CAMERA_MIN_POSITION.y) ||
-//       camera.position.y === CAMERA_MAX_POSITION.y) {
-//       camera.position.x += 1;
-//       camera.position.y -= 1;
-//     }
-//   } else {
-//     if ((camera.position.y < CAMERA_MAX_POSITION.y &&
-//       camera.position.y > CAMERA_MIN_POSITION.y) ||
-//       camera.position.y === CAMERA_MIN_POSITION.y) {
-//       camera.position.x -= 1;
-//       camera.position.y += 1;
-//     }
-//   }  
-// });
 
 // #endregion
 
@@ -574,9 +518,9 @@ function EventTick() {
       }
     }
     characterCollision.setFromObject(character, true);
-    if (!bIsTriggerSurvivalMode && characterCollision.intersectsBox(redButtonCollision)) {
-      RunSurvivalMode(0);
-    }
+    // if (!bIsTriggerSurvivalMode && characterCollision.intersectsBox(redButtonCollision)) {
+    //   RunSurvivalMode(0);
+    // }
     // if (runCodeEachSeconds(clock.getElapsedTime(), 3)) {
     //   // console.log("hiii");
     //   // spawnEnemy(0, 20);
@@ -587,6 +531,8 @@ function EventTick() {
         enemy.collision.setFromObject(enemy.mesh, true);
         if (enemy.collision.intersectsBox(weaponBananaKatanaCollision)) {
           enemy.healthPoint -= .5;
+          // (enemy.mesh.children[1] as THREE.Audio).play();
+
         } else if (enemy.collision.intersectsBox(characterCollision)) {
           enemy.healthPoint -= 1;
           characterHP -= 1;
@@ -606,35 +552,80 @@ function EventTick() {
       }
     });
 
+    // Interact with model
+    Information_Facebook_Button_Collision.setFromObject(Information_Facebook_Button, true);
+    Information_Github_Button_Collision.setFromObject(Information_Github_Button, true);
+    Information_Gmail_Button_Collision.setFromObject(Information_Gmail_Button, true);
+    Information_Linkedin_Button_Collision.setFromObject(Information_Linkedin_Button, true);
+    redButtonCollision.setFromObject(redButton, true);
+
+    if (Information_Facebook_Button_Collision.intersectsBox(characterCollision)) {
+      Information_Facebook_Button.position.lerp(new THREE.Vector3(0, 1, 0), deltaTime)
+      if (keyMap["KeyF"]) {
+        window.open('https://www.facebook.com/minhnln0712/', '_blank');
+      }
+    } else {
+      Information_Facebook_Button.position.lerp(new THREE.Vector3(0, .25, 0), deltaTime)
+    }
+    if (Information_Github_Button_Collision.intersectsBox(characterCollision)) {
+      Information_Github_Button.position.lerp(new THREE.Vector3(0, 1, 0), deltaTime)
+      if (keyMap["KeyF"]) {
+        window.open('https://github.com/minhnln0712', '_blank');
+      }
+    } else {
+      Information_Github_Button.position.lerp(new THREE.Vector3(0, .25, 0), deltaTime)
+    }
+    if (Information_Gmail_Button_Collision.intersectsBox(characterCollision)) {
+      Information_Gmail_Button.position.lerp(new THREE.Vector3(0, 1, 0), deltaTime)
+      if (keyMap["KeyF"]) {
+        window.location.href = 'mailto:minhnln0712@gmail.com?subject=Subject&body=Body';
+      }
+    } else {
+      Information_Gmail_Button.position.lerp(new THREE.Vector3(0, .25, 0), deltaTime)
+    }
+    if (Information_Linkedin_Button_Collision.intersectsBox(characterCollision)) {
+      Information_Linkedin_Button.position.lerp(new THREE.Vector3(0, 1, 0), deltaTime)
+      if (keyMap["KeyF"]) {
+        window.open('https://www.linkedin.com/in/minhnln0712/', '_blank');
+      }
+    } else {
+      Information_Linkedin_Button.position.lerp(new THREE.Vector3(0, .25, 0), deltaTime)
+    }
+    if (redButtonCollision.intersectsBox(characterCollision) && keyMap["KeyF"]) {
+      RunSurvivalMode(deltaTime);
+    }
+
+
+
     // #region Movement and Controls
     if (!bIsInitSurvivalMode && !bIsAccessPortfolio) {
       if (keyMap["KeyW"]) {
-        CharacterMoveUp(CHARACTER_MOVE_SPEED);
-        character.rotation.y = 0.5 * Math.PI;
+        CharacterMoveUp(-CHARACTER_MOVE_SPEED);
+        character.rotation.y = Math.PI;
       }
       if (keyMap["KeyS"]) {
-        CharacterMoveUp(-CHARACTER_MOVE_SPEED);
-        character.rotation.y = -0.5 * Math.PI;
+        CharacterMoveUp(CHARACTER_MOVE_SPEED);
+        character.rotation.y = 0;
       }
       if (keyMap["KeyA"]) {
         CharacterMoveRight(-CHARACTER_MOVE_SPEED);
-        character.rotation.y = Math.PI;
+        character.rotation.y = -0.5 * Math.PI;
       }
       if (keyMap["KeyD"]) {
         CharacterMoveRight(CHARACTER_MOVE_SPEED);
-        character.rotation.y = 0;
+        character.rotation.y = 0.5 * Math.PI;
       }
       if (keyMap["KeyW"] && keyMap["KeyD"]) {
-        character.rotation.y = 0.25 * Math.PI;
-      }
-      if (keyMap["KeyS"] && keyMap["KeyD"]) {
-        character.rotation.y = -0.25 * Math.PI;
-      }
-      if (keyMap["KeyW"] && keyMap["KeyA"]) {
         character.rotation.y = 0.75 * Math.PI;
       }
-      if (keyMap["KeyS"] && keyMap["KeyA"]) {
+      if (keyMap["KeyS"] && keyMap["KeyD"]) {
+        character.rotation.y = 0.25 * Math.PI;
+      }
+      if (keyMap["KeyW"] && keyMap["KeyA"]) {
         character.rotation.y = -0.75 * Math.PI;
+      }
+      if (keyMap["KeyS"] && keyMap["KeyA"]) {
+        character.rotation.y = -0.25 * Math.PI;
       }
       if (
         (keyMap["KeyW"] && keyMap["KeyS"]) ||
@@ -642,6 +633,9 @@ function EventTick() {
       ) {
         characterMoveAnimation.stop();
         characterIdleAnimation.play();
+      }
+      if (keyMap["KeyZ"]) {
+        console.log(character.position);
       }
     }
 
