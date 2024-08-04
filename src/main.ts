@@ -81,7 +81,7 @@ let listener: THREE.AudioListener;
 let bgmSound: THREE.Audio;
 let loseSound: THREE.Audio;
 let survivalSound: THREE.Audio;
-let hitSound: THREE.Audio;
+// let hitSound: THREE.Audio;
 
 // Light
 
