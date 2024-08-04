@@ -371,7 +371,7 @@ async function init() {
   bgmSound = new THREE.Audio(listener);
   loseSound = new THREE.Audio(listener);
   survivalSound = new THREE.Audio(listener);
-  hitSound = new THREE.Audio(listener);
+  // hitSound = new THREE.Audio(listener);
 
   audioLoader.load("sounds/BGM.ogg", function (buffer) {
     bgmSound.setBuffer(buffer);
