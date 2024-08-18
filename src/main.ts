@@ -94,8 +94,7 @@ const loadingManager = new THREE.LoadingManager();
 let numOfAssetsLoaded = 0;
 const TOTAL_NUMBER_OF_ASSETS = 54;
 
-loadingManager.onProgress = (url, loaded, total) => {
-  // console.log(url + total);
+loadingManager.onProgress = (_url, loaded, _total) => {
   numOfAssetsLoaded = loaded;
   progressBar.value = (loaded / TOTAL_NUMBER_OF_ASSETS) * 100;
 }
