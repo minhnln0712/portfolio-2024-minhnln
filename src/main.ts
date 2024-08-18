@@ -1,6 +1,5 @@
 import "./style.css";
 import * as THREE from "three";
-import Stats from "three/addons/libs/stats.module.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { TrackballControls } from "three/addons/controls/TrackballControls.js";
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -9,7 +8,6 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 // Initialization
-let stats: Stats;
 const clock = new THREE.Clock();
 let deltaTime: number;
 let bIsTriggerSurvivalMode = false;
@@ -125,10 +123,6 @@ scene.castShadow = true;
 init();
 
 async function init() {
-  // Check application stats
-  stats = new Stats();
-  // document.body.appendChild(stats.dom);
-
   // #region Camera Init
 
   camera = new THREE.PerspectiveCamera(
@@ -651,7 +645,6 @@ function EventTick() {
     }
     // #endregion
   }
-  stats.update();
   if (keyMap['KeyF']) for (const key in keyMap) keyMap[key] = false;
   render();
 }
