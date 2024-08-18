@@ -15,6 +15,7 @@ let deltaTime: number;
 let bIsTriggerSurvivalMode = false;
 let bIsInitSurvivalMode = false;
 let bIsAccessPortfolio = false;
+let bIsLoseSoundPlayed = false;
 
 // Camera
 let renderer: THREE.WebGLRenderer;
@@ -93,10 +94,10 @@ const startButton = document.getElementById("startBtn") as HTMLButtonElement;
 const loadingManager = new THREE.LoadingManager();
 
 let numOfAssetsLoaded = 0;
-const TOTAL_NUMBER_OF_ASSETS = 50;
+const TOTAL_NUMBER_OF_ASSETS = 54;
 
 loadingManager.onProgress = (url, loaded, total) => {
-  console.log(url + total);
+  // console.log(url + total);
   numOfAssetsLoaded = loaded;
   progressBar.value = (loaded / TOTAL_NUMBER_OF_ASSETS) * 100;
 }
@@ -485,7 +486,10 @@ function EventTick() {
   if (characterHP <= 0) {
     bIsCharacterDead = true;
     if (survivalSound.isPlaying) survivalSound.stop();
-    if (!loseSound.isPlaying) loseSound.play();
+    if (!loseSound.isPlaying && !bIsLoseSoundPlayed) {
+      bIsLoseSoundPlayed = true;
+      loseSound.play();
+    }
   }
   if (keyMap["KeyR"] && bIsCharacterDead) resetTheGame();
   if (!bIsCharacterDead) {
@@ -583,6 +587,7 @@ function EventTick() {
       Information_Linkedin_Button.position.lerp(new THREE.Vector3(0, .25, 0), deltaTime)
     }
     if (redButtonCollision.intersectsBox(characterCollision) && keyMap["KeyF"]) {
+      // red
       RunSurvivalMode(deltaTime);
     }
 
